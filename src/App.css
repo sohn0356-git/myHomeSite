@@ -1,42 +1,174 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+:root {
+  --bg: #f6f7ff;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --line: rgba(17, 24, 39, 0.08);
+
+  /* Key color */
+  --key: #4f46e5;
+  --key-weak: rgba(79, 70, 229, 0.12);
+
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 30% -10%, var(--key-weak), transparent),
+    var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR",
+    sans-serif;
+  color: var(--text);
+}
+
+.page {
+  min-height: 100vh;
+  padding: 22px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.container {
+  width: 100%;
+  max-width: 880px;
+  display: grid;
+  gap: 14px;
+}
+
+/* TopBar */
+.topBar {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius);
+  padding: 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topTitle {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.topSub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.brandDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--key);
+  box-shadow: 0 0 0 6px rgba(79, 70, 229, 0.12);
+}
+
+/* Hero card */
+.heroCard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 40px rgba(17, 24, 39, 0.06);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+/* Mini summary pills inside hero */
+.miniSummary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.miniSummary span {
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  color: #2b2a6b;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Buttons (base) */
+button {
+  border: none;
+  background: var(--key);
+  color: white;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  transition: transform 0.05s ease, opacity 0.15s ease;
+}
+
+button:hover {
+  opacity: 0.95;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+/* AttendanceActions uses .secondary */
+.secondary {
+  background: #eef2ff;
+  color: #2b2a6b;
+  border: 1px solid rgba(79, 70, 229, 0.18);
+}
+
+/* WeekNavigator */
+.weekBar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.weekText {
+  font-weight: 800;
   text-align: center;
+  letter-spacing: -0.01em;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(79, 70, 229, 0.06);
+  border: 1px solid rgba(79, 70, 229, 0.16);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Footer hint */
+.footerHint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 0;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Mobile */
+@media (max-width: 640px) {
+  .page {
+    padding: 14px;
   }
-  to {
-    transform: rotate(360deg);
+
+  .weekBar {
+    grid-template-columns: 1fr;
   }
-}
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+  .weekText {
+    order: -1;
   }
-}
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  .weekBar button {
+    width: 100%;
+  }
 }
