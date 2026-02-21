@@ -1,131 +1,244 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./App.css";
 
 import TopBar from "./components/TopBar";
-import WeekNavigator from "./components/WeekNavigator";
-import AttendanceActions from "./components/AttendanceActions";
-import AttendanceTable from "./components/AttendanceTable";
+import AttendancePage from "./components/AttendancePage";
+import StudentsPage from "./components/StudentsPage";
+import StudentDetail from "./components/StudentDetail";
+import SyncPage from "./components/SyncPage";
+import SettingsPage from "./components/SettingsPage";
 
-import { members } from "./data/members";
-import { formatKoreanSunday, getSunday, getWeekKey } from "./utils/date";
+import { seedMembers } from "./data/seedMembers";
+import { addDays, getSunday, weekKey, formatDate } from "./utils/date";
+import { loadState, saveState, resetState } from "./utils/storage";
 
-function createInitialAttendance() {
-  return members.reduce((acc, member) => {
-    acc[member.name] = false;
-    return acc;
-  }, {});
+function buildInitialState() {
+  return {
+    members: seedMembers,
+    attendanceByWeek: {}, // { [weekKey]: { [memberId]: boolean } }
+    profiles: {}, // { [memberId]: { phone, guardianPhone, note, photoDataUrl } }
+    syncConfig: { webAppUrl: "", token: "" },
+  };
 }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("attendance");
+  const [sunday, setSunday] = useState(getSunday());
 
-  const [selectedSunday, setSelectedSunday] = useState(getSunday());
-  const [attendance, setAttendance] = useState(createInitialAttendance());
+  const [state, setState] = useState(() => loadState() || buildInitialState());
+  const { members, attendanceByWeek, profiles, syncConfig } = state;
 
-  const weekKey = useMemo(() => getWeekKey(selectedSunday), [selectedSunday]);
+  const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
+  const attendanceMap = attendanceByWeek[currentWeekKey] || {};
 
-  useEffect(() => {
-    const saved = localStorage.getItem(weekKey);
-    if (saved) {
-      setAttendance(JSON.parse(saved));
-    } else {
-      setAttendance(createInitialAttendance());
+  const [detailMemberId, setDetailMemberId] = useState(null);
+  const detailMember = members.find((m) => m.id === detailMemberId) || null;
+
+  const persist = (next) => {
+    setState(next);
+    saveState(next);
+  };
+
+  const setAttendanceForWeek = (nextMap) => {
+    const next = {
+      ...state,
+      attendanceByWeek: {
+        ...attendanceByWeek,
+        [currentWeekKey]: nextMap,
+      },
+    };
+    persist(next);
+  };
+
+  const onToggleAttendance = (memberId) => {
+    setAttendanceForWeek({
+      ...attendanceMap,
+      [memberId]: !attendanceMap[memberId],
+    });
+  };
+
+  const onMarkAll = (value) => {
+    const next = {};
+    members.forEach((m) => {
+      next[m.id] = value;
+    });
+    setAttendanceForWeek(next);
+  };
+
+  const onPrevWeek = () => setSunday((d) => addDays(d, -7));
+  const onNextWeek = () => setSunday((d) => addDays(d, 7));
+
+  const onChangeProfile = (memberId, profile) => {
+    const next = {
+      ...state,
+      profiles: {
+        ...profiles,
+        [memberId]: profile,
+      },
+    };
+    persist(next);
+  };
+
+  // ------- Sync (Apps Script) -------
+  const [lastSyncResult, setLastSyncResult] = useState(null);
+
+  const onUpdateSyncConfig = (nextCfg) => {
+    const next = { ...state, syncConfig: nextCfg };
+    persist(next);
+  };
+
+  const onSendAttendance = async () => {
+    try {
+      if (!syncConfig.webAppUrl || !syncConfig.token) {
+        alert("연동 탭에서 Web App URL과 Token을 먼저 입력해줘.");
+        return;
+      }
+
+      // Apps Script 권장 payload 형태
+      const sundayDate = formatDate(sunday);
+
+      const rows = members.map((m) => ({
+        주일날짜: sundayDate,
+        이름: m.name,
+        구분: m.role,
+        출석여부: attendanceMap[m.id] ? "출석" : "결석",
+      }));
+
+      const payload = { token: syncConfig.token, rows };
+
+      const res = await fetch(syncConfig.webAppUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      setLastSyncResult(data);
+
+      if (!data.ok) {
+        alert(`전송 실패: ${data.error || "unknown error"}`);
+      } else {
+        alert(`전송 완료! (추가 ${data.inserted} / 수정 ${data.updated})`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert(`전송 중 오류: ${e.message}`);
     }
-  }, [weekKey]);
-
-  useEffect(() => {
-    localStorage.setItem(weekKey, JSON.stringify(attendance));
-  }, [attendance, weekKey]);
-
-  const handleToggleAttendance = (name) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [name]: !prev[name],
-    }));
   };
 
-  const handlePrevWeek = () => {
-    const prev = new Date(selectedSunday);
-    prev.setDate(prev.getDate() - 7);
-    setSelectedSunday(prev);
+  // ------- Settings -------
+  const onResetAll = () => {
+    if (!confirm("전체 데이터를 초기화할까? (출석/프로필/연동 포함)")) return;
+    resetState();
+    const fresh = buildInitialState();
+    setState(fresh);
+    saveState(fresh);
+    setDetailMemberId(null);
+    setActiveTab("attendance");
+    alert("초기화 완료");
   };
 
-  const handleNextWeek = () => {
-    const next = new Date(selectedSunday);
-    next.setDate(next.getDate() + 7);
-    setSelectedSunday(next);
+  const onExport = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "class-site-backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handleMarkAll = (value) => {
-    const updated = members.reduce((acc, member) => {
-      acc[member.name] = value;
-      return acc;
-    }, {});
-    setAttendance(updated);
-  };
+  const onImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const presentCount = members.filter((m) => attendance[m.name]).length;
-  const absentCount = members.length - presentCount;
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+
+      // 최소 검증
+      if (
+        !imported.members ||
+        !imported.attendanceByWeek ||
+        !imported.profiles
+      ) {
+        throw new Error("백업 파일 형식이 올바르지 않음");
+      }
+
+      persist(imported);
+      alert("복원 완료");
+    } catch (err) {
+      alert(`복원 실패: ${err.message}`);
+    } finally {
+      e.target.value = "";
+    }
+  };
 
   return (
     <div className="page">
       <div className="container">
         <TopBar
-          title="주일 출석체크"
-          subtitle="매주 일요일 · 반 출석 관리"
+          title="우리반 출석부"
+          subtitle="출석 · 학생 · 연동 · 설정"
           activeTab={activeTab}
-          onChangeTab={setActiveTab}
+          onChangeTab={(t) => {
+            setActiveTab(t);
+            setDetailMemberId(null);
+          }}
         />
 
         {activeTab === "attendance" && (
-          <>
-            <div className="heroCard">
-              <WeekNavigator
-                label={formatKoreanSunday(selectedSunday)}
-                onPrev={handlePrevWeek}
-                onNext={handleNextWeek}
-              />
-
-              <div className="miniSummary">
-                <span>출석 {presentCount}명</span>
-                <span>결석 {absentCount}명</span>
-              </div>
-
-              <AttendanceActions
-                onMarkAllPresent={() => handleMarkAll(true)}
-                onMarkAllAbsent={() => handleMarkAll(false)}
-              />
-            </div>
-
-            <AttendanceTable
-              members={members}
-              attendance={attendance}
-              onToggle={handleToggleAttendance}
-            />
-
-            <div className="footerHint">
-              데이터는 현재 브라우저에 자동 저장됨 (localStorage)
-            </div>
-          </>
+          <AttendancePage
+            sunday={sunday}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+            members={members}
+            attendanceMap={attendanceMap}
+            onToggle={onToggleAttendance}
+            onMarkAll={onMarkAll}
+          />
         )}
 
-        {activeTab === "history" && (
-          <div className="heroCard">
-            <div className="panelTitle">기록</div>
-            <div className="panelDesc">
-              다음 단계에서 주차별 출석 기록(읽기 전용) 화면을 붙일 예정.
-            </div>
-          </div>
+        {activeTab === "students" && (
+          <StudentsPage
+            members={members}
+            profiles={profiles}
+            onOpenDetail={(id) => setDetailMemberId(id)}
+          />
+        )}
+
+        {activeTab === "sync" && (
+          <SyncPage
+            syncConfig={syncConfig}
+            onUpdateSyncConfig={onUpdateSyncConfig}
+            onSendAttendance={onSendAttendance}
+            lastSyncResult={lastSyncResult}
+          />
         )}
 
         {activeTab === "settings" && (
-          <div className="heroCard">
-            <div className="panelTitle">설정</div>
-            <div className="panelDesc">
-              다음 단계에서 명단 관리 / 데이터 초기화 기능을 추가 예정.
-            </div>
-          </div>
+          <SettingsPage
+            onResetAll={onResetAll}
+            onExport={onExport}
+            onImport={onImport}
+          />
         )}
+
+        {detailMember && (
+          <StudentDetail
+            member={detailMember}
+            profile={profiles[detailMember.id]}
+            onChangeProfile={onChangeProfile}
+            onClose={() => setDetailMemberId(null)}
+          />
+        )}
+
+        <div className="footerHint">
+          데이터 저장: 이 브라우저(localStorage). 다른 기기와 공유하려면
+          Sheets/Firebase 연동 권장.
+        </div>
       </div>
     </div>
   );

@@ -1,8 +1,14 @@
 export function getSunday(date = new Date()) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  const day = d.getDay(); // 0:일 ~ 6:토
+  const day = d.getDay(); // 0:일
   d.setDate(d.getDate() - day);
+  return d;
+}
+
+export function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
   return d;
 }
 
@@ -20,6 +26,6 @@ export function formatKoreanSunday(date) {
   return `${y}년 ${m}월 ${d}일 (일)`;
 }
 
-export function getWeekKey(sundayDate) {
+export function weekKey(sundayDate) {
   return `attendance-${formatDate(sundayDate)}`;
 }
