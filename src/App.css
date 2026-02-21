@@ -64,13 +64,11 @@ body {
   font-weight: 900;
   letter-spacing: -0.02em;
 }
-
 .topSub {
   margin-top: 4px;
   font-size: 13px;
   color: var(--muted);
 }
-
 .topBarRight {
   display: flex;
   align-items: center;
@@ -211,30 +209,13 @@ button:active {
   border: 1px solid rgba(79, 70, 229, 0.18);
 }
 
-.dangerBtn {
-  background: rgba(239, 68, 68, 0.12);
-  color: #991b1b;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-.fileBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
 /* Actions */
 .actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
-.actions button,
-.actions .fileBtn {
+.actions button {
   flex: 1;
   min-width: 180px;
 }
@@ -351,14 +332,56 @@ button:active {
   background: var(--bad);
 }
 
-/* Annual */
-.weekGrid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+/* Annual: member chips */
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.weekCard {
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+}
+
+.chipActive {
+  border-color: rgba(79, 70, 229, 0.24);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.chipRole {
+  font-size: 12px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.roleTeacher {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+.roleStudent {
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+}
+.chipName {
+  font-weight: 900;
+}
+
+/* Annual: month cards */
+.monthGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.monthCard {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -367,67 +390,186 @@ button:active {
   gap: 10px;
 }
 
-.weekCardTop {
+.monthTitle {
+  font-weight: 900;
+}
+
+.weekDots {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dotWrap {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: rgba(17, 24, 39, 0.1);
+}
+
+.dotOn {
+  background: rgba(22, 163, 74, 0.18);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+.dotOff {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.dotNone {
+  background: rgba(17, 24, 39, 0.08);
+  border-color: rgba(17, 24, 39, 0.12);
+}
+
+.dotLabel {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.monthHint {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend .dot {
+  width: 10px;
+  height: 10px;
+}
+
+/* Modal (student detail) */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modalCard {
+  width: 100%;
+  max-width: 720px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 30px 90px rgba(17, 24, 39, 0.25);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.modalTop {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
 }
 
-.weekCardTitle {
+.modalTitle {
   font-weight: 900;
+  font-size: 16px;
 }
-.weekCardBadge {
-  font-size: 12px;
+.modalSub {
   color: var(--muted);
-  background: rgba(17, 24, 39, 0.05);
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 900;
-  white-space: nowrap;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
-.weekCardBars {
+/* ✅ 사진 작게 */
+.profileRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.profilePhotoSmall {
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.profilePhotoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.profilePhotoFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 28px;
+  color: #2b2a6b;
+}
+
+.profileActions {
+  display: grid;
+  gap: 8px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.field {
   display: grid;
   gap: 6px;
 }
-.barLine {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.barLabel {
+.fieldLabel {
+  font-size: 12px;
   color: var(--muted);
-  font-size: 12px;
   font-weight: 900;
 }
-.barValue {
-  font-weight: 900;
-}
-.barValue.good {
-  color: #166534;
-}
-.barValue.bad {
-  color: #991b1b;
-}
-
-.jsonCard {
-  background: var(--card);
+.fieldInput,
+.fieldTextarea {
+  width: 100%;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  outline: none;
+  background: #fff;
 }
-.jsonPre {
-  margin: 0;
-  padding: 12px;
-  font-size: 12px;
-  color: #111827;
-  white-space: pre;
-  overflow: auto;
-  max-height: 420px;
+.fieldInput:focus,
+.fieldTextarea:focus {
+  border-color: rgba(79, 70, 229, 0.35);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
 }
 
-/* Panel */
+.hintSmall {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .panelTitle {
   font-weight: 900;
   font-size: 16px;
@@ -478,8 +620,7 @@ button:active {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-  .actions button,
-  .actions .fileBtn {
+  .actions button {
     min-width: 0;
   }
 
@@ -487,10 +628,57 @@ button:active {
     min-width: 96px;
   }
 
-  .weekGrid {
+  .monthGrid {
     grid-template-columns: 1fr;
   }
-  .jsonPre {
-    max-height: 360px;
+  .weekDots {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .profileRow {
+    grid-template-columns: 1fr;
+  }
+  .profilePhotoSmall {
+    width: 140px;
+    height: 140px;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .annualHeader {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .annualAvatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 70, 229, 0.18);
+    background: rgba(79, 70, 229, 0.08);
+  }
+
+  .annualName {
+    font-weight: 900;
+    font-size: 16px;
+  }
+
+  .annualRole {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  @media (max-width: 640px) {
+    .annualHeader {
+      grid-template-columns: 60px 1fr;
+    }
+    .annualAvatar {
+      width: 56px;
+      height: 56px;
+    }
   }
 }

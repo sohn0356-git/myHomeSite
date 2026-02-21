@@ -3,7 +3,6 @@ export default function Tabs({ active, onChange }) {
     { key: "attendance", label: "출석" },
     { key: "annual", label: "연간" },
     { key: "students", label: "학생" },
-    { key: "sync", label: "연동" },
     { key: "settings", label: "설정" },
   ];
 

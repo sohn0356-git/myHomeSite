@@ -1,9 +1,9 @@
 import { formatKoreanSunday } from "../utils/date";
+import { avatarMap } from "../data/avatarMap";
 
-function Avatar({ photoDataUrl, fallback }) {
-  if (photoDataUrl) {
-    return <img className="avatarImg" src={photoDataUrl} alt="" />;
-  }
+function Avatar({ memberId, fallback }) {
+  const src = avatarMap[memberId];
+  if (src) return <img className="avatarImg" src={src} alt="" />;
   return <div className="avatarFallback">{fallback}</div>;
 }
 
@@ -15,7 +15,6 @@ export default function AttendancePage({
   attendanceMap,
   onToggle,
   onMarkAll,
-  profiles,
 }) {
   const present = members.filter((m) => attendanceMap[m.id]).length;
   const absent = members.length - present;
@@ -69,16 +68,11 @@ export default function AttendancePage({
         <div className="listCard">
           {members.map((m) => {
             const checked = !!attendanceMap[m.id];
-            const p = profiles?.[m.id] || {};
-
             return (
               <div key={m.id} className="memberRow">
                 <div className="memberLeft">
                   <div className="miniAvatar">
-                    <Avatar
-                      photoDataUrl={p.photoDataUrl}
-                      fallback={m.name.slice(0, 1)}
-                    />
+                    <Avatar memberId={m.id} fallback={m.name.slice(0, 1)} />
                   </div>
 
                   <div

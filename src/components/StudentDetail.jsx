@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { avatarMap } from "../data/avatarMap";
 
 export default function StudentDetail({
   member,
@@ -6,34 +6,20 @@ export default function StudentDetail({
   onChangeProfile,
   onClose,
 }) {
-  const fileRef = useRef(null);
-
   const safeProfile = profile || {};
-  const title = useMemo(() => `${member.role} · ${member.name}`, [member]);
+  const avatar = avatarMap[member.id];
 
   const update = (patch) =>
     onChangeProfile(member.id, { ...safeProfile, ...patch });
-
-  const onPickPhoto = () => fileRef.current?.click();
-
-  const onFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // MVP: 그대로 DataURL 저장 (용량 이슈 있으면 다음 단계에서 리사이즈/압축 붙이자)
-    const reader = new FileReader();
-    reader.onload = () => {
-      update({ photoDataUrl: String(reader.result) });
-    };
-    reader.readAsDataURL(file);
-  };
 
   return (
     <div className="modalOverlay" role="dialog" aria-modal="true">
       <div className="modalCard">
         <div className="modalTop">
           <div>
-            <div className="modalTitle">{title}</div>
+            <div className="modalTitle">
+              {member.role} · {member.name}
+            </div>
             <div className="modalSub">프로필 / 인적사항</div>
           </div>
           <button type="button" className="secondary" onClick={onClose}>
@@ -42,13 +28,9 @@ export default function StudentDetail({
         </div>
 
         <div className="profileRow">
-          <div className="profilePhoto">
-            {safeProfile.photoDataUrl ? (
-              <img
-                className="profilePhotoImg"
-                src={safeProfile.photoDataUrl}
-                alt=""
-              />
+          <div className="profilePhotoSmall">
+            {avatar ? (
+              <img className="profilePhotoImg" src={avatar} alt="" />
             ) : (
               <div className="profilePhotoFallback">
                 {member.name.slice(0, 1)}
@@ -57,26 +39,9 @@ export default function StudentDetail({
           </div>
 
           <div className="profileActions">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={onFileChange}
-            />
-            <button type="button" onClick={onPickPhoto}>
-              사진 업로드
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => update({ photoDataUrl: "" })}
-            >
-              사진 제거
-            </button>
             <div className="hintSmall">
-              ※ 사진은 현재 브라우저에 저장됨(로컬). 용량이 크면 저장이 실패할
-              수 있음.
+              현재는 <b>assets에 넣은 고정 아바타</b>를 사용. (Firebase 추가 시
+              업로드로 확장 가능)
             </div>
           </div>
         </div>
@@ -108,7 +73,7 @@ export default function StudentDetail({
               className="fieldTextarea"
               value={safeProfile.note || ""}
               onChange={(e) => update({ note: e.target.value })}
-              placeholder="예: 알레르기, 출석 패턴, 관심사, 기도제목 등"
+              placeholder="예: 알레르기, 관심사, 기도제목 등"
               rows={5}
             />
           </label>
