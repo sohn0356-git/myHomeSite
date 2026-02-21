@@ -681,4 +681,161 @@ button:active {
       height: 56px;
     }
   }
+  /* Annual Matrix Table */
+  .annualTableWrap {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: auto;
+    box-shadow: 0 14px 40px rgba(17, 24, 39, 0.06);
+  }
+
+  .annualTable {
+    width: max-content; /* 가로로 길어질 수 있게 */
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 100%;
+  }
+
+  .annualTable th,
+  .annualTable td {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 10px;
+    text-align: center;
+    white-space: nowrap;
+    background: #fff;
+  }
+
+  .annualTable thead th {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 900;
+  }
+
+  .stickyHead {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+  }
+
+  .stickyCol {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+  }
+
+  .nameHead {
+    text-align: left;
+    min-width: 180px;
+  }
+
+  .dateHead {
+    min-width: 56px;
+  }
+
+  .sumHead {
+    min-width: 84px;
+  }
+
+  .nameCell {
+    text-align: left;
+    min-width: 180px;
+  }
+
+  .nameCellInner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nameText {
+    font-weight: 900;
+  }
+
+  .cell {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    margin: 0 auto;
+    border: 1px solid rgba(17, 24, 39, 0.12);
+  }
+
+  .cellOn {
+    background: rgba(22, 163, 74, 0.18);
+    border-color: rgba(22, 163, 74, 0.35);
+  }
+
+  .cellOff {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .cellNone {
+    background: rgba(17, 24, 39, 0.08);
+    border-color: rgba(17, 24, 39, 0.12);
+  }
+
+  .sumCell {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    min-width: 84px;
+  }
+
+  .sumCellInner {
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+  }
+
+  .pct {
+    font-weight: 900;
+  }
+
+  .sub {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 900;
+  }
+
+  .annualLegend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    padding: 8px 6px 0;
+  }
+
+  .legendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .legendSwatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  /* Mobile tweak */
+  @media (max-width: 640px) {
+    .nameHead,
+    .nameCell {
+      min-width: 150px;
+    }
+    .dateHead {
+      min-width: 52px;
+    }
+  }
 }
