@@ -1,4 +1,11 @@
-import { addDays, formatKoreanSunday } from "../utils/date";
+import { formatKoreanSunday } from "../utils/date";
+
+function Avatar({ photoDataUrl, fallback }) {
+  if (photoDataUrl) {
+    return <img className="avatarImg" src={photoDataUrl} alt="" />;
+  }
+  return <div className="avatarFallback">{fallback}</div>;
+}
 
 export default function AttendancePage({
   sunday,
@@ -8,6 +15,7 @@ export default function AttendancePage({
   attendanceMap,
   onToggle,
   onMarkAll,
+  profiles,
 }) {
   const present = members.filter((m) => attendanceMap[m.id]).length;
   const absent = members.length - present;
@@ -61,9 +69,18 @@ export default function AttendancePage({
         <div className="listCard">
           {members.map((m) => {
             const checked = !!attendanceMap[m.id];
+            const p = profiles?.[m.id] || {};
+
             return (
               <div key={m.id} className="memberRow">
                 <div className="memberLeft">
+                  <div className="miniAvatar">
+                    <Avatar
+                      photoDataUrl={p.photoDataUrl}
+                      fallback={m.name.slice(0, 1)}
+                    />
+                  </div>
+
                   <div
                     className={`pill ${
                       m.role === "선생님" ? "pillTeacher" : "pillStudent"
@@ -71,6 +88,7 @@ export default function AttendancePage({
                   >
                     {m.role}
                   </div>
+
                   <div className="memberName">{m.name}</div>
                 </div>
 

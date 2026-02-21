@@ -3,6 +3,7 @@ import "./App.css";
 
 import TopBar from "./components/TopBar";
 import AttendancePage from "./components/AttendancePage";
+import AnnualPage from "./components/AnnualPage";
 import StudentsPage from "./components/StudentsPage";
 import StudentDetail from "./components/StudentDetail";
 import SyncPage from "./components/SyncPage";
@@ -94,7 +95,6 @@ export default function App() {
         return;
       }
 
-      // Apps Script 권장 payload 형태
       const sundayDate = formatDate(sunday);
 
       const rows = members.map((m) => ({
@@ -115,11 +115,8 @@ export default function App() {
       const data = await res.json();
       setLastSyncResult(data);
 
-      if (!data.ok) {
-        alert(`전송 실패: ${data.error || "unknown error"}`);
-      } else {
-        alert(`전송 완료! (추가 ${data.inserted} / 수정 ${data.updated})`);
-      }
+      if (!data.ok) alert(`전송 실패: ${data.error || "unknown error"}`);
+      else alert(`전송 완료! (추가 ${data.inserted} / 수정 ${data.updated})`);
     } catch (e) {
       console.error(e);
       alert(`전송 중 오류: ${e.message}`);
@@ -158,7 +155,6 @@ export default function App() {
       const text = await file.text();
       const imported = JSON.parse(text);
 
-      // 최소 검증
       if (
         !imported.members ||
         !imported.attendanceByWeek ||
@@ -176,12 +172,14 @@ export default function App() {
     }
   };
 
+  const year = sunday.getFullYear();
+
   return (
     <div className="page">
       <div className="container">
         <TopBar
           title="우리반 출석부"
-          subtitle="출석 · 학생 · 연동 · 설정"
+          subtitle="출석 · 연간 · 학생 · 연동 · 설정"
           activeTab={activeTab}
           onChangeTab={(t) => {
             setActiveTab(t);
@@ -198,6 +196,15 @@ export default function App() {
             attendanceMap={attendanceMap}
             onToggle={onToggleAttendance}
             onMarkAll={onMarkAll}
+            profiles={profiles}
+          />
+        )}
+
+        {activeTab === "annual" && (
+          <AnnualPage
+            year={year}
+            members={members}
+            attendanceByWeek={attendanceByWeek}
           />
         )}
 
@@ -236,8 +243,8 @@ export default function App() {
         )}
 
         <div className="footerHint">
-          데이터 저장: 이 브라우저(localStorage). 다른 기기와 공유하려면
-          Sheets/Firebase 연동 권장.
+          데이터 저장: 이 브라우저(localStorage). 연간 탭에서 JSON 다운로드
+          가능.
         </div>
       </div>
     </div>
