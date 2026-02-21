@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-import Header from "./components/Header";
+import TopBar from "./components/TopBar";
 import WeekNavigator from "./components/WeekNavigator";
 import AttendanceActions from "./components/AttendanceActions";
 import AttendanceTable from "./components/AttendanceTable";
@@ -35,9 +35,6 @@ export default function App() {
     localStorage.setItem(weekKey, JSON.stringify(attendance));
   }, [attendance, weekKey]);
 
-  const presentCount = members.filter((m) => attendance[m.name]).length;
-  const absentCount = members.length - presentCount;
-
   const handleToggleAttendance = (name) => {
     setAttendance((prev) => ({
       ...prev,
@@ -65,21 +62,31 @@ export default function App() {
     setAttendance(updated);
   };
 
+  const presentCount = members.filter((m) => attendance[m.name]).length;
+  const absentCount = members.length - presentCount;
+
   return (
     <div className="page">
-      <div className="card">
-        <Header presentCount={presentCount} absentCount={absentCount} />
+      <div className="container">
+        <TopBar title="주일 출석체크" subtitle="매주 일요일 · 반 출석 관리" />
 
-        <WeekNavigator
-          label={formatKoreanSunday(selectedSunday)}
-          onPrev={handlePrevWeek}
-          onNext={handleNextWeek}
-        />
+        <div className="heroCard">
+          <WeekNavigator
+            label={formatKoreanSunday(selectedSunday)}
+            onPrev={handlePrevWeek}
+            onNext={handleNextWeek}
+          />
 
-        <AttendanceActions
-          onMarkAllPresent={() => handleMarkAll(true)}
-          onMarkAllAbsent={() => handleMarkAll(false)}
-        />
+          <div className="miniSummary">
+            <span>출석 {presentCount}명</span>
+            <span>결석 {absentCount}명</span>
+          </div>
+
+          <AttendanceActions
+            onMarkAllPresent={() => handleMarkAll(true)}
+            onMarkAllAbsent={() => handleMarkAll(false)}
+          />
+        </div>
 
         <AttendanceTable
           members={members}
@@ -87,9 +94,9 @@ export default function App() {
           onToggle={handleToggleAttendance}
         />
 
-        <p className="footNote">
-          저장 방식: 브라우저 localStorage (같은 브라우저에서 자동 유지)
-        </p>
+        <div className="footerHint">
+          데이터는 현재 브라우저에 자동 저장됨 (localStorage)
+        </div>
       </div>
     </div>
   );
