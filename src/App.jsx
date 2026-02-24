@@ -79,7 +79,9 @@ export default function App() {
 
   const persist = (next) => {
     setState(next);
-    saveState(next);
+    saveState(next).catch((err) => {
+      console.error("State sync failed:", err);
+    });
   };
 
   const setAttendanceForWeek = (nextMap) => {

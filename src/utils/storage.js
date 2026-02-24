@@ -9,6 +9,7 @@ import { firebaseEnabled, realtimeDb, storageBucket } from "../lib/firebase";
 
 const LOCAL_KEY = "classSite.v3";
 const ROOT_PATH = "classSite";
+let remoteWriteChain = Promise.resolve();
 
 function normalizeState(raw, fallbackMembers = []) {
   if (!raw || typeof raw !== "object") {
@@ -47,9 +48,15 @@ export function saveState(state) {
   const normalized = normalizeState(state);
   localStorage.setItem(LOCAL_KEY, JSON.stringify(normalized));
 
-  if (!firebaseEnabled) return;
-  set(ref(realtimeDb, ROOT_PATH), normalized).catch((err) => {
+  if (!firebaseEnabled) return Promise.resolve();
+
+  remoteWriteChain = remoteWriteChain
+    .catch(() => {})
+    .then(() => set(ref(realtimeDb, ROOT_PATH), normalized));
+
+  return remoteWriteChain.catch((err) => {
     console.error("Failed to sync state to Firebase Realtime Database:", err);
+    throw err;
   });
 }
 
