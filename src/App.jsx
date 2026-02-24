@@ -21,10 +21,16 @@ import {
 
 function buildInitialState() {
   return {
+    className: "",
     members: seedMembers,
     attendanceByWeek: {},
     profiles: {},
   };
+}
+
+function createMemberId(role) {
+  const prefix = role === "선생님" ? "t" : "s";
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export default function App() {
@@ -35,7 +41,7 @@ export default function App() {
     isFirebaseEnabled() ? "firebase" : "local"
   );
 
-  const { members, attendanceByWeek, profiles } = state;
+  const { className, members, attendanceByWeek, profiles } = state;
   const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
   const attendanceMap = attendanceByWeek[currentWeekKey] || {};
 
@@ -114,6 +120,69 @@ export default function App() {
     });
   };
 
+  const onSetClassName = (nextClassName) => {
+    persist({
+      ...state,
+      className: nextClassName,
+    });
+  };
+
+  const onAddMember = ({ name, role }) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    const nextMember = {
+      id: createMemberId(role),
+      name: trimmedName,
+      role,
+    };
+
+    persist({
+      ...state,
+      members: [...members, nextMember],
+    });
+  };
+
+  const onRemoveMember = async (memberId) => {
+    const removedProfile = profiles[memberId];
+
+    const nextMembers = members.filter((m) => m.id !== memberId);
+    const nextProfiles = { ...profiles };
+    delete nextProfiles[memberId];
+
+    const nextAttendanceByWeek = {};
+    Object.entries(attendanceByWeek).forEach(([week, weekMap]) => {
+      if (!weekMap || typeof weekMap !== "object") return;
+      if (!Object.prototype.hasOwnProperty.call(weekMap, memberId)) {
+        nextAttendanceByWeek[week] = weekMap;
+        return;
+      }
+
+      const nextWeekMap = { ...weekMap };
+      delete nextWeekMap[memberId];
+      nextAttendanceByWeek[week] = nextWeekMap;
+    });
+
+    if (detailMemberId === memberId) {
+      setDetailMemberId(null);
+    }
+
+    persist({
+      ...state,
+      members: nextMembers,
+      profiles: nextProfiles,
+      attendanceByWeek: nextAttendanceByWeek,
+    });
+
+    if (removedProfile?.photoPath) {
+      try {
+        await deleteMemberPhotoByPath(removedProfile.photoPath);
+      } catch (err) {
+        console.warn("Failed to delete photo file:", err);
+      }
+    }
+  };
+
   const onUploadPhoto = async (memberId, file) => {
     const result = await uploadMemberPhoto(memberId, file);
     const prevPath = profiles[memberId]?.photoPath;
@@ -155,13 +224,14 @@ export default function App() {
   };
 
   const year = sunday.getFullYear();
+  const appTitle = className ? `${className} 출석부` : "출석부";
 
   return (
     <div className="page">
       <div className="container">
         <TopBar
-          title="Attendance Board"
-          subtitle="Attendance / Annual / Students"
+          title={appTitle}
+          subtitle="출석 / 연간 / 학생 관리"
           activeTab={activeTab}
           onChangeTab={(tab) => {
             setActiveTab(tab);
@@ -192,8 +262,12 @@ export default function App() {
 
         {activeTab === "students" && (
           <StudentsPage
+            className={className}
             members={members}
             profiles={profiles}
+            onSetClassName={onSetClassName}
+            onAddMember={onAddMember}
+            onRemoveMember={onRemoveMember}
             onOpenDetail={(id) => setDetailMemberId(id)}
           />
         )}
@@ -211,7 +285,7 @@ export default function App() {
         )}
 
         <div className="footerHint">
-          Sync mode: {syncMode === "firebase" ? "Firebase Realtime DB" : "Local only"}
+          동기화: {syncMode === "firebase" ? "Firebase Realtime DB" : "로컬 저장"}
         </div>
       </div>
     </div>

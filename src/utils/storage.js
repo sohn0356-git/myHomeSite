@@ -7,12 +7,13 @@ import {
 } from "firebase/storage";
 import { firebaseEnabled, realtimeDb, storageBucket } from "../lib/firebase";
 
-const LOCAL_KEY = "classSite.v2";
+const LOCAL_KEY = "classSite.v3";
 const ROOT_PATH = "classSite";
 
 function normalizeState(raw, fallbackMembers = []) {
   if (!raw || typeof raw !== "object") {
     return {
+      className: "",
       members: fallbackMembers,
       attendanceByWeek: {},
       profiles: {},
@@ -20,10 +21,9 @@ function normalizeState(raw, fallbackMembers = []) {
   }
 
   return {
+    className: typeof raw.className === "string" ? raw.className : "",
     members:
-      Array.isArray(raw.members) && raw.members.length > 0
-        ? raw.members
-        : fallbackMembers,
+      Array.isArray(raw.members) ? raw.members : fallbackMembers,
     attendanceByWeek: raw.attendanceByWeek || {},
     profiles: raw.profiles || {},
   };
