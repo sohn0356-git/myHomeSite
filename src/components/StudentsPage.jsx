@@ -1,6 +1,6 @@
-function Avatar({ photoDataUrl, fallback }) {
-  if (photoDataUrl) {
-    return <img className="avatarImg" src={photoDataUrl} alt="" />;
+function Avatar({ photoUrl, fallback }) {
+  if (photoUrl) {
+    return <img className="avatarImg" src={photoUrl} alt="" />;
   }
   return <div className="avatarFallback">{fallback}</div>;
 }
@@ -18,7 +18,9 @@ export default function StudentsPage({ members, profiles, onOpenDetail }) {
 
       <div className="gridCard">
         {list.map((m) => {
-          const p = profiles[m.id] || {};
+          const profile = profiles[m.id] || {};
+          const photoUrl = profile.photoUrl || profile.photoDataUrl;
+
           return (
             <button
               key={m.id}
@@ -27,16 +29,13 @@ export default function StudentsPage({ members, profiles, onOpenDetail }) {
               onClick={() => onOpenDetail(m.id)}
             >
               <div className="personAvatar">
-                <Avatar
-                  photoDataUrl={p.photoDataUrl}
-                  fallback={m.name.slice(0, 1)}
-                />
+                <Avatar photoUrl={photoUrl} fallback={m.name.slice(0, 1)} />
               </div>
               <div className="personMeta">
                 <div className="personName">{m.name}</div>
                 <div className="personRole">{m.role}</div>
                 <div className="personHint">
-                  {p.note ? p.note : "인적사항 입력 가능"}
+                  {profile.note ? profile.note : "메모를 입력해 주세요"}
                 </div>
               </div>
             </button>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 import TopBar from "./components/TopBar";
@@ -9,7 +9,15 @@ import StudentDetail from "./components/StudentDetail";
 
 import { seedMembers } from "./data/seedMembers";
 import { addDays, getSunday, weekKey } from "./utils/date";
-import { loadState, saveState } from "./utils/storage";
+import {
+  deleteMemberPhotoByPath,
+  ensureRemoteState,
+  isFirebaseEnabled,
+  loadState,
+  saveState,
+  subscribeRemoteState,
+  uploadMemberPhoto,
+} from "./utils/storage";
 
 function buildInitialState() {
   return {
@@ -22,7 +30,10 @@ function buildInitialState() {
 export default function App() {
   const [activeTab, setActiveTab] = useState("attendance");
   const [sunday, setSunday] = useState(getSunday());
-  const [state, setState] = useState(() => loadState() || buildInitialState());
+  const [state, setState] = useState(() => loadState(seedMembers));
+  const [syncMode, setSyncMode] = useState(
+    isFirebaseEnabled() ? "firebase" : "local"
+  );
 
   const { members, attendanceByWeek, profiles } = state;
   const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
@@ -30,6 +41,35 @@ export default function App() {
 
   const [detailMemberId, setDetailMemberId] = useState(null);
   const detailMember = members.find((m) => m.id === detailMemberId) || null;
+
+  useEffect(() => {
+    if (!isFirebaseEnabled()) return () => {};
+
+    let detached = false;
+    let unsubscribe = () => {};
+
+    const startSync = async () => {
+      try {
+        await ensureRemoteState(buildInitialState());
+        if (detached) return;
+
+        unsubscribe = subscribeRemoteState((remoteState) => {
+          setState(remoteState);
+        });
+        setSyncMode("firebase");
+      } catch (err) {
+        console.error("Firebase sync setup failed:", err);
+        setSyncMode("local");
+      }
+    };
+
+    startSync();
+
+    return () => {
+      detached = true;
+      unsubscribe();
+    };
+  }, []);
 
   const persist = (next) => {
     setState(next);
@@ -74,6 +114,46 @@ export default function App() {
     });
   };
 
+  const onUploadPhoto = async (memberId, file) => {
+    const result = await uploadMemberPhoto(memberId, file);
+    const prevPath = profiles[memberId]?.photoPath;
+
+    if (prevPath && prevPath !== result.path) {
+      try {
+        await deleteMemberPhotoByPath(prevPath);
+      } catch (err) {
+        console.warn("Failed to delete old photo file:", err);
+      }
+    }
+
+    const nextProfile = {
+      ...(profiles[memberId] || {}),
+      photoPath: result.path,
+      photoUrl: result.url,
+    };
+
+    onChangeProfile(memberId, nextProfile);
+    return result.url;
+  };
+
+  const onRemovePhoto = async (memberId) => {
+    const prevPath = profiles[memberId]?.photoPath;
+    if (prevPath) {
+      try {
+        await deleteMemberPhotoByPath(prevPath);
+      } catch (err) {
+        console.warn("Failed to delete photo file:", err);
+      }
+    }
+
+    const prev = profiles[memberId] || {};
+    const nextProfile = { ...prev };
+    delete nextProfile.photoPath;
+    delete nextProfile.photoUrl;
+    delete nextProfile.photoDataUrl;
+    onChangeProfile(memberId, nextProfile);
+  };
+
   const year = sunday.getFullYear();
 
   return (
@@ -95,6 +175,7 @@ export default function App() {
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             members={members}
+            profiles={profiles}
             attendanceMap={attendanceMap}
             onToggle={onToggleAttendance}
             onMarkAll={onMarkAll}
@@ -122,11 +203,16 @@ export default function App() {
             member={detailMember}
             profile={profiles[detailMember.id]}
             onChangeProfile={onChangeProfile}
+            onUploadPhoto={onUploadPhoto}
+            onRemovePhoto={onRemovePhoto}
+            firebaseEnabled={isFirebaseEnabled()}
             onClose={() => setDetailMemberId(null)}
           />
         )}
 
-        <div className="footerHint">Data is stored in this device localStorage.</div>
+        <div className="footerHint">
+          Sync mode: {syncMode === "firebase" ? "Firebase Realtime DB" : "Local only"}
+        </div>
       </div>
     </div>
   );

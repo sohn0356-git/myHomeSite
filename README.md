@@ -1,16 +1,39 @@
-# React + Vite
+# Attendance Board
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite 기반 출석 관리 앱입니다.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 주간 출석 체크
+- 연간 출석표(컴팩트 매트릭스)
+- 학생 프로필 관리
+- Firebase Realtime Database 실시간 동기화
+- Firebase Storage 사진 업로드/삭제
 
-## React Compiler
+## Local Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+## Firebase Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Firebase 프로젝트 생성
+2. Realtime Database 활성화
+3. Storage 활성화
+4. Web App 등록 후 설정값 복사
+5. `.env.example`을 복사해서 `.env` 생성 후 값 입력
+
+```bash
+cp .env.example .env
+```
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+환경변수가 모두 설정되면 Firebase 동기화가 자동으로 활성화됩니다.
+설정이 없으면 앱은 로컬(localStorage) 모드로 동작합니다.

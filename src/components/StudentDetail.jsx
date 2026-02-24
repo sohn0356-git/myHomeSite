@@ -1,16 +1,62 @@
+import { useState } from "react";
 import { avatarMap } from "../data/avatarMap";
 
 export default function StudentDetail({
   member,
   profile,
   onChangeProfile,
+  onUploadPhoto,
+  onRemovePhoto,
+  firebaseEnabled,
   onClose,
 }) {
-  const safeProfile = profile || {};
-  const avatar = avatarMap[member.id];
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState("");
 
-  const update = (patch) =>
+  const safeProfile = profile || {};
+  const avatar =
+    safeProfile.photoUrl || safeProfile.photoDataUrl || avatarMap[member.id];
+
+  const update = (patch) => {
     onChangeProfile(member.id, { ...safeProfile, ...patch });
+  };
+
+  const handleUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setError("");
+    if (!file.type.startsWith("image/")) {
+      setError("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+
+    if (!firebaseEnabled) {
+      setError("Firebase 설정 후 사진 업로드를 사용할 수 있습니다.");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      await onUploadPhoto(member.id, file);
+    } catch (err) {
+      console.error(err);
+      setError("사진 업로드에 실패했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setError("");
+    try {
+      await onRemovePhoto(member.id);
+    } catch (err) {
+      console.error(err);
+      setError("사진 삭제에 실패했습니다.");
+    }
+  };
 
   return (
     <div className="modalOverlay" role="dialog" aria-modal="true">
@@ -32,17 +78,35 @@ export default function StudentDetail({
             {avatar ? (
               <img className="profilePhotoImg" src={avatar} alt="" />
             ) : (
-              <div className="profilePhotoFallback">
-                {member.name.slice(0, 1)}
-              </div>
+              <div className="profilePhotoFallback">{member.name.slice(0, 1)}</div>
             )}
           </div>
 
           <div className="profileActions">
-            <div className="hintSmall">
-              현재는 <b>assets에 넣은 고정 아바타</b>를 사용. (Firebase 추가 시
-              업로드로 확장 가능)
+            <div className="actions">
+              <label className="fileBtn secondary">
+                {isUploading ? "업로드 중..." : "사진 업로드"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  disabled={isUploading}
+                  onChange={handleUpload}
+                />
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                disabled={isUploading || (!safeProfile.photoUrl && !safeProfile.photoDataUrl)}
+                onClick={handleRemovePhoto}
+              >
+                사진 삭제
+              </button>
             </div>
+            <div className="hintSmall">
+              Firebase Storage에 학생 사진을 저장하고 Realtime Database에 URL을 기록합니다.
+            </div>
+            {error ? <div className="hintSmall">{error}</div> : null}
           </div>
         </div>
 
@@ -73,7 +137,7 @@ export default function StudentDetail({
               className="fieldTextarea"
               value={safeProfile.note || ""}
               onChange={(e) => update({ note: e.target.value })}
-              placeholder="예: 알레르기, 관심사, 기도제목 등"
+              placeholder="알레르기, 관심사, 기도제목 등"
               rows={5}
             />
           </label>

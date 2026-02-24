@@ -1,8 +1,8 @@
 import { formatKoreanSunday } from "../utils/date";
 import { avatarMap } from "../data/avatarMap";
 
-function Avatar({ memberId, fallback }) {
-  const src = avatarMap[memberId];
+function Avatar({ memberId, fallback, photoUrl }) {
+  const src = photoUrl || avatarMap[memberId];
   if (src) return <img className="avatarImg" src={src} alt="" />;
   return <div className="avatarFallback">{fallback}</div>;
 }
@@ -12,6 +12,7 @@ export default function AttendancePage({
   onPrevWeek,
   onNextWeek,
   members,
+  profiles,
   attendanceMap,
   onToggle,
   onMarkAll,
@@ -24,7 +25,7 @@ export default function AttendancePage({
       <div className="heroCard">
         <div className="weekBar">
           <button type="button" onClick={onPrevWeek} className="secondary">
-            ← 이전 주
+            이전 주
           </button>
 
           <div className="weekText" title={formatKoreanSunday(sunday)}>
@@ -32,7 +33,7 @@ export default function AttendancePage({
           </div>
 
           <button type="button" onClick={onNextWeek} className="secondary">
-            다음 주 →
+            다음 주
           </button>
         </div>
 
@@ -42,11 +43,7 @@ export default function AttendancePage({
         </div>
 
         <div className="actions">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onMarkAll(true)}
-          >
+          <button type="button" className="secondary" onClick={() => onMarkAll(true)}>
             전체 출석
           </button>
           <button
@@ -68,11 +65,18 @@ export default function AttendancePage({
         <div className="listCard">
           {members.map((m) => {
             const checked = !!attendanceMap[m.id];
+            const profile = profiles[m.id] || {};
+            const photoUrl = profile.photoUrl || profile.photoDataUrl;
+
             return (
               <div key={m.id} className="memberRow">
                 <div className="memberLeft">
                   <div className="miniAvatar">
-                    <Avatar memberId={m.id} fallback={m.name.slice(0, 1)} />
+                    <Avatar
+                      memberId={m.id}
+                      fallback={m.name.slice(0, 1)}
+                      photoUrl={photoUrl}
+                    />
                   </div>
 
                   <div
@@ -93,9 +97,7 @@ export default function AttendancePage({
                   aria-pressed={checked}
                 >
                   <span className="toggleDot" />
-                  <span className="toggleText">
-                    {checked ? "출석" : "결석"}
-                  </span>
+                  <span className="toggleText">{checked ? "출석" : "결석"}</span>
                 </button>
               </div>
             );
