@@ -6,11 +6,10 @@ import AttendancePage from "./components/AttendancePage";
 import AnnualPage from "./components/AnnualPage";
 import StudentsPage from "./components/StudentsPage";
 import StudentDetail from "./components/StudentDetail";
-import SettingsPage from "./components/SettingsPage";
 
 import { seedMembers } from "./data/seedMembers";
 import { addDays, getSunday, weekKey } from "./utils/date";
-import { loadState, saveState, resetState } from "./utils/storage";
+import { loadState, saveState } from "./utils/storage";
 
 function buildInitialState() {
   return {
@@ -26,7 +25,6 @@ export default function App() {
   const [state, setState] = useState(() => loadState() || buildInitialState());
 
   const { members, attendanceByWeek, profiles } = state;
-
   const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
   const attendanceMap = attendanceByWeek[currentWeekKey] || {};
 
@@ -57,7 +55,9 @@ export default function App() {
 
   const onMarkAll = (value) => {
     const next = {};
-    members.forEach((m) => (next[m.id] = value));
+    members.forEach((m) => {
+      next[m.id] = value;
+    });
     setAttendanceForWeek(next);
   };
 
@@ -74,26 +74,17 @@ export default function App() {
     });
   };
 
-  const onResetAll = () => {
-    if (!confirm("전체 데이터를 초기화할까? (출석/인적사항 포함)")) return;
-    resetState();
-    const fresh = buildInitialState();
-    persist(fresh);
-    setDetailMemberId(null);
-    setActiveTab("attendance");
-  };
-
   const year = sunday.getFullYear();
 
   return (
     <div className="page">
       <div className="container">
         <TopBar
-          title="우리반 출석부"
-          subtitle="출석 · 연간 · 학생 · 설정"
+          title="Attendance Board"
+          subtitle="Attendance / Annual / Students"
           activeTab={activeTab}
-          onChangeTab={(t) => {
-            setActiveTab(t);
+          onChangeTab={(tab) => {
+            setActiveTab(tab);
             setDetailMemberId(null);
           }}
         />
@@ -126,8 +117,6 @@ export default function App() {
           />
         )}
 
-        {activeTab === "settings" && <SettingsPage onResetAll={onResetAll} />}
-
         {detailMember && (
           <StudentDetail
             member={detailMember}
@@ -137,9 +126,7 @@ export default function App() {
           />
         )}
 
-        <div className="footerHint">
-          저장 위치: 현재 기기 브라우저(localStorage)
-        </div>
+        <div className="footerHint">Data is stored in this device localStorage.</div>
       </div>
     </div>
   );
