@@ -473,27 +473,15 @@ button:active {
 .boardPersonCard .personName {
   font-size: 14px;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .boardPersonCard .personMeta {
   display: flex;
   align-items: center;
-}
-
-.teacherMark {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 12px;
-  color: #8a5d00;
-  background: linear-gradient(180deg, #ffe9ad, #ffd166);
-  border: 1px solid rgba(138, 93, 0, 0.32);
-  z-index: 2;
+  padding-right: 34px;
 }
 
 .cardTrashBtn {
@@ -541,6 +529,12 @@ button:active {
 
 .personTeacher {
   background: linear-gradient(145deg, #ffffff 0%, #eef7ff 100%);
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(145deg, #ffffff 0%, #eef7ff 100%),
+    linear-gradient(135deg, #0f6fb8 0%, #27b28f 52%, #1c7aa6 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
 }
 
 .personStudent {
@@ -843,6 +837,11 @@ button:active {
   align-items: start;
 }
 
+.quickFields {
+  display: grid;
+  gap: 8px;
+}
+
 .profilePhotoSmall {
   width: 96px;
   height: 96px;
@@ -1030,6 +1029,7 @@ button:active {
     width: 28px;
     height: 28px;
     font-size: 13px;
+    right: 4px;
   }
 
   .profileRow {
@@ -1040,6 +1040,10 @@ button:active {
   .profilePhotoSmall {
     width: 120px;
     height: 120px;
+  }
+
+  .quickFields {
+    gap: 6px;
   }
 
   .formGrid {

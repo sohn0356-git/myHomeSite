@@ -114,11 +114,6 @@ export default function StudentsPage({
         >
           <span className="personShape personShapeA" aria-hidden="true" />
           <span className="personShape personShapeB" aria-hidden="true" />
-          {member.role === "선생님" ? (
-            <span className="teacherMark" aria-hidden="true">
-              ★
-            </span>
-          ) : null}
           <button
             type="button"
             className="cardTrashBtn"

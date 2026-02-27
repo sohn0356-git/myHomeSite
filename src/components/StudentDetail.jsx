@@ -73,37 +73,50 @@ export default function StudentDetail({
               onChange={handleUpload}
             />
           </label>
-          {error ? <div className="hintSmall">{error}</div> : null}
+          <div className="quickFields">
+            <label className="field">
+              <div className="fieldLabel">전화번호</div>
+              <input
+                className="fieldInput"
+                value={safeProfile.phone || ""}
+                onChange={(e) => update({ phone: e.target.value })}
+                placeholder="010-0000-0000"
+              />
+            </label>
+
+            <label className="field">
+              <div className="fieldLabel">보호자 연락처</div>
+              <input
+                className="fieldInput"
+                value={safeProfile.guardianPhone || ""}
+                onChange={(e) => update({ guardianPhone: e.target.value })}
+                placeholder="010-0000-0000"
+              />
+            </label>
+
+            <label className="field">
+              <div className="fieldLabel">생년월일</div>
+              <input
+                type="date"
+                className="fieldInput"
+                value={safeProfile.birthDate || ""}
+                onChange={(e) => update({ birthDate: e.target.value })}
+              />
+            </label>
+          </div>
         </div>
 
+        {error ? <div className="hintSmall">{error}</div> : null}
+
         <div className="formGrid">
-          <label className="field">
-            <div className="fieldLabel">전화번호</div>
-            <input
-              className="fieldInput"
-              value={safeProfile.phone || ""}
-              onChange={(e) => update({ phone: e.target.value })}
-              placeholder="010-0000-0000"
-            />
-          </label>
-
-          <label className="field">
-            <div className="fieldLabel">보호자 연락처</div>
-            <input
-              className="fieldInput"
-              value={safeProfile.guardianPhone || ""}
-              onChange={(e) => update({ guardianPhone: e.target.value })}
-              placeholder="010-0000-0000"
-            />
-          </label>
-
-          <label className="field">
-            <div className="fieldLabel">생년월일</div>
-            <input
-              type="date"
-              className="fieldInput"
-              value={safeProfile.birthDate || ""}
-              onChange={(e) => update({ birthDate: e.target.value })}
+          <label className="field fieldFull">
+            <div className="fieldLabel">특이사항 메모</div>
+            <textarea
+              className="fieldTextarea"
+              value={safeProfile.note || ""}
+              onChange={(e) => update({ note: e.target.value })}
+              placeholder="알레르기, 복용약, 참고사항 등을 입력"
+              rows={4}
             />
           </label>
         </div>
