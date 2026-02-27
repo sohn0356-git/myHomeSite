@@ -33,8 +33,10 @@ function getScope(groupUid, grade) {
 }
 
 function normalizeState(rawYear, rawTeachers, fallbackMembers = [], birthYearKey = "") {
-  const rawClasses = Array.isArray(rawYear?.classes) ? rawYear.classes : [];
-  const fallbackClassNames = Array.isArray(rawYear?.classNames) ? rawYear.classNames : [];
+  const safeRawYear =
+    rawYear && typeof rawYear === "object" ? rawYear : {};
+  const rawClasses = Array.isArray(safeRawYear?.classes) ? safeRawYear.classes : [];
+  const fallbackClassNames = Array.isArray(safeRawYear?.classNames) ? safeRawYear.classNames : [];
   const classesFromLegacy = fallbackClassNames
     .map((name) => (typeof name === "string" ? name.trim() : ""))
     .filter(Boolean)
@@ -53,8 +55,10 @@ function normalizeState(rawYear, rawTeachers, fallbackMembers = [], birthYearKey
 
   const classByName = new Map(classes.map((item) => [item.name, item.id]));
   const peopleTree =
-    rawYear?.people && !Array.isArray(rawYear.people) && typeof rawYear.people === "object"
-      ? rawYear.people
+    safeRawYear?.people &&
+    !Array.isArray(safeRawYear.people) &&
+    typeof safeRawYear.people === "object"
+      ? safeRawYear.people
       : null;
   const studentsByYear =
     peopleTree && peopleTree.student && typeof peopleTree.student === "object"
@@ -78,10 +82,12 @@ function normalizeState(rawYear, rawTeachers, fallbackMembers = [], birthYearKey
     teachersBucketFromRoot.length > 0 ? teachersBucketFromRoot : teachersBucketFromYear;
   const rawPeople = peopleTree
     ? [...studentsForScope, ...teachersBucket]
-    : Array.isArray(rawYear?.people)
-    ? rawYear.people
-    : Array.isArray(rawYear?.members)
-    ? rawYear.members
+    : teachersBucketFromRoot.length > 0
+    ? teachersBucketFromRoot
+    : Array.isArray(safeRawYear?.people)
+    ? safeRawYear.people
+    : Array.isArray(safeRawYear?.members)
+    ? safeRawYear.members
     : fallbackMembers;
   const people = rawPeople.map((person, idx) => {
     const safeRole = person?.role === "선생님" ? "선생님" : "학생";
@@ -114,29 +120,11 @@ function normalizeState(rawYear, rawTeachers, fallbackMembers = [], birthYearKey
     };
   });
 
-  if (!rawYear || typeof rawYear !== "object") {
-    return {
-      classes: [],
-      people: fallbackMembers.map((member, idx) => ({
-        id:
-          typeof member?.id === "string" && member.id
-            ? member.id
-            : `person_${idx + 1}`,
-        name: member?.name || `구성원${idx + 1}`,
-        role: member?.role === "선생님" ? "선생님" : "학생",
-        classId: "",
-        birthYear: birthYearKey,
-      })),
-      attendanceByWeek: {},
-      profiles: {},
-    };
-  }
-
   return {
     classes,
     people,
-    attendanceByWeek: rawYear.attendanceByWeek || {},
-    profiles: rawYear.profiles || {},
+    attendanceByWeek: safeRawYear.attendanceByWeek || {},
+    profiles: safeRawYear.profiles || {},
   };
 }
 
@@ -260,7 +248,6 @@ export function subscribeRemoteState(groupUid = "", grade = "1", onState, onErro
 
   const emit = () => {
     if (!yearReady || !teachersReady) return;
-    if (!latestYear) return;
     const next = normalizeState(latestYear, latestTeachers, [], birthYear);
     localStorage.setItem(localKey, JSON.stringify(encodeYearStateForStorage(next, birthYear)));
     localStorage.setItem(teachersLocalKey, JSON.stringify(encodeTeachersForStorage(next)));
@@ -270,9 +257,8 @@ export function subscribeRemoteState(groupUid = "", grade = "1", onState, onErro
   const unsubYear = onValue(
     yearRef,
     (snap) => {
-      if (!snap.exists()) return;
       yearReady = true;
-      latestYear = snap.val();
+      latestYear = snap.exists() ? snap.val() : {};
       emit();
     },
     (err) => {
@@ -314,7 +300,7 @@ export async function loadRemoteState(
   const yearRef = ref(realtimeDb, remotePath);
   const teachersRef = ref(realtimeDb, teachersPath);
   const [yearSnap, teachersSnap] = await Promise.all([get(yearRef), get(teachersRef)]);
-  const rawYear = yearSnap.exists() ? yearSnap.val() : null;
+  const rawYear = yearSnap.exists() ? yearSnap.val() : {};
   const rawTeachers = teachersSnap.exists() ? teachersSnap.val() : {};
   const next = normalizeState(rawYear, rawTeachers, fallbackMembers, birthYear);
 
