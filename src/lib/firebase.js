@@ -22,6 +22,7 @@ const requiredKeys = [
 ];
 
 const isConfigured = requiredKeys.every((key) => Boolean(config[key]));
+export const missingFirebaseKeys = requiredKeys.filter((key) => !config[key]);
 
 export const firebaseEnabled = isConfigured;
 

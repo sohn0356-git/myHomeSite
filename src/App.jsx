@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { missingFirebaseKeys } from "./lib/firebase";
 
 import TopBar from "./components/TopBar";
 import AttendancePage from "./components/AttendancePage";
@@ -32,6 +33,13 @@ function buildInitialState() {
 function createMemberId(role) {
   const prefix = role === "선생님" ? "t" : "s";
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function formatFirebaseError(err, fallbackMessage) {
+  const code = typeof err?.code === "string" ? err.code : "";
+  const message = err?.message || fallbackMessage;
+  const path = err?.remotePath ? ` (path: ${err.remotePath})` : "";
+  return `${code ? `${code} - ` : ""}${message}${path}`;
 }
 
 export default function App() {
@@ -80,14 +88,14 @@ export default function App() {
           },
           (err) => {
             console.error("Firebase subscribe failed:", err);
-            setSyncError(err?.message || "구독 실패");
+            setSyncError(formatFirebaseError(err, "구독 실패"));
             setSyncMode("local");
           }
         );
         setSyncMode("firebase");
       } catch (err) {
         console.error("Firebase sync setup failed:", err);
-        setSyncError(err?.message || "초기화 실패");
+        setSyncError(formatFirebaseError(err, "초기화 실패"));
         setSyncMode("local");
       }
     };
@@ -114,7 +122,7 @@ export default function App() {
       })
       .catch((err) => {
         console.error("State sync failed:", err);
-        setSyncError(err?.message || "저장 실패");
+        setSyncError(formatFirebaseError(err, "저장 실패"));
         setLastWriteResult({
           ok: false,
           mode: isFirebaseEnabled() ? "firebase" : "local",
@@ -340,6 +348,9 @@ export default function App() {
 
         <div className="footerHint">
           동기화: {syncMode === "firebase" ? "Firebase Realtime DB" : "로컬 저장"}
+          {!isFirebaseEnabled() && missingFirebaseKeys.length
+            ? ` · Firebase 설정 누락: ${missingFirebaseKeys.join(", ")}`
+            : ""}
           {" · "}
           저장 경로: {birthYearKey ? `classSite/byBirthYear/${birthYearKey}` : "미지정"}
           {lastWriteResult ? (

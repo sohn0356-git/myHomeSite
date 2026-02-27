@@ -136,7 +136,7 @@ export default function StudentsPage({
               className="fieldInput"
               value={classNamesInput}
               onChange={(e) => setClassNamesInput(e.target.value)}
-              placeholder="예: 1, 2, 3"
+              placeholder="예: 사랑반, 소망반, 믿음반"
             />
           </label>
 

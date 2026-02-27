@@ -109,6 +109,7 @@ export function saveState(state, grade = "1") {
 
   return remoteWriteChain.catch((err) => {
     console.error("Failed to sync state to Firebase Realtime Database:", err);
+    err.remotePath = remotePath;
     throw err;
   });
 }
@@ -119,7 +120,12 @@ export async function ensureRemoteState(seedState, grade = "1") {
   const rootRef = ref(realtimeDb, remotePath);
   const snap = await get(rootRef);
   if (!snap.exists()) {
-    await set(rootRef, normalizeState(seedState));
+    try {
+      await set(rootRef, normalizeState(seedState));
+    } catch (err) {
+      err.remotePath = remotePath;
+      throw err;
+    }
   }
 }
 
