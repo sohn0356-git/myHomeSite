@@ -12,6 +12,7 @@ import { addDays, getSunday, weekKey } from "./utils/date";
 import {
   deleteMemberPhotoByPath,
   ensureRemoteState,
+  gradeToBirthYear,
   isFirebaseEnabled,
   loadState,
   saveState,
@@ -21,7 +22,6 @@ import {
 
 function buildInitialState() {
   return {
-    grade: "",
     classNames: [],
     members: seedMembers,
     attendanceByWeek: {},
@@ -37,36 +37,57 @@ function createMemberId(role) {
 export default function App() {
   const [activeTab, setActiveTab] = useState("attendance");
   const [sunday, setSunday] = useState(getSunday());
-  const [state, setState] = useState(() => loadState(seedMembers));
+  const [selectedGrade, setSelectedGrade] = useState("1");
+  const [state, setState] = useState(() => loadState(seedMembers, "1"));
   const [syncMode, setSyncMode] = useState(
     isFirebaseEnabled() ? "firebase" : "local"
   );
   const [lastWriteResult, setLastWriteResult] = useState(null);
+  const [syncError, setSyncError] = useState("");
 
-  const { grade, classNames, members, attendanceByWeek, profiles } = state;
+  const { classNames, members, attendanceByWeek, profiles } = state;
   const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
   const attendanceMap = attendanceByWeek[currentWeekKey] || {};
+  const birthYearKey = useMemo(
+    () => gradeToBirthYear(selectedGrade),
+    [selectedGrade]
+  );
 
   const [detailMemberId, setDetailMemberId] = useState(null);
   const detailMember = members.find((m) => m.id === detailMemberId) || null;
 
   useEffect(() => {
-    if (!isFirebaseEnabled()) return () => {};
+    setState(loadState(seedMembers, selectedGrade));
+
+    if (!isFirebaseEnabled()) {
+      setSyncMode("local");
+      return () => {};
+    }
 
     let detached = false;
     let unsubscribe = () => {};
 
     const startSync = async () => {
       try {
-        await ensureRemoteState(buildInitialState());
+        setSyncError("");
+        await ensureRemoteState(buildInitialState(), selectedGrade);
         if (detached) return;
 
-        unsubscribe = subscribeRemoteState((remoteState) => {
-          setState(remoteState);
-        });
+        unsubscribe = subscribeRemoteState(
+          selectedGrade,
+          (remoteState) => {
+            setState(remoteState);
+          },
+          (err) => {
+            console.error("Firebase subscribe failed:", err);
+            setSyncError(err?.message || "구독 실패");
+            setSyncMode("local");
+          }
+        );
         setSyncMode("firebase");
       } catch (err) {
         console.error("Firebase sync setup failed:", err);
+        setSyncError(err?.message || "초기화 실패");
         setSyncMode("local");
       }
     };
@@ -77,12 +98,13 @@ export default function App() {
       detached = true;
       unsubscribe();
     };
-  }, []);
+  }, [selectedGrade]);
 
   const persist = (next) => {
     setState(next);
-    saveState(next)
+    saveState(next, selectedGrade)
       .then(() => {
+        setSyncError("");
         setLastWriteResult({
           ok: true,
           mode: isFirebaseEnabled() ? "firebase" : "local",
@@ -92,6 +114,7 @@ export default function App() {
       })
       .catch((err) => {
         console.error("State sync failed:", err);
+        setSyncError(err?.message || "저장 실패");
         setLastWriteResult({
           ok: false,
           mode: isFirebaseEnabled() ? "firebase" : "local",
@@ -139,10 +162,9 @@ export default function App() {
     });
   };
 
-  const onSetClassConfig = ({ grade: nextGrade, classNames: nextClassNames }) => {
+  const onSetClassConfig = ({ classNames: nextClassNames }) => {
     persist({
       ...state,
-      grade: nextGrade,
       classNames: nextClassNames,
     });
   };
@@ -245,10 +267,11 @@ export default function App() {
   };
 
   const year = sunday.getFullYear();
-  const classesLabel = classNames.length ? `${classNames.join(", ")}반` : "";
-  const appTitle = [grade ? `${grade}학년` : "", classesLabel, "출석부"]
-    .filter(Boolean)
-    .join(" ");
+  const appTitle = `${selectedGrade}학년 출석부`;
+  const onChangeGrade = (nextGrade) => {
+    setDetailMemberId(null);
+    setSelectedGrade(nextGrade);
+  };
   const writeAtText = lastWriteResult?.at
     ? new Date(lastWriteResult.at).toLocaleString("ko-KR")
     : "";
@@ -268,6 +291,7 @@ export default function App() {
 
         {activeTab === "attendance" && (
           <AttendancePage
+            grade={selectedGrade}
             sunday={sunday}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
@@ -289,10 +313,12 @@ export default function App() {
 
         {activeTab === "members" && (
           <StudentsPage
-            grade={grade}
+            grade={selectedGrade}
             classNames={classNames}
             members={members}
             profiles={profiles}
+            birthYearKey={birthYearKey}
+            onChangeGrade={onChangeGrade}
             onSetClassConfig={onSetClassConfig}
             onAddMember={onAddMember}
             onRemoveMember={onRemoveMember}
@@ -314,6 +340,8 @@ export default function App() {
 
         <div className="footerHint">
           동기화: {syncMode === "firebase" ? "Firebase Realtime DB" : "로컬 저장"}
+          {" · "}
+          저장 경로: {birthYearKey ? `classSite/byBirthYear/${birthYearKey}` : "미지정"}
           {lastWriteResult ? (
             <>
               {" · "}
@@ -324,6 +352,7 @@ export default function App() {
                 : ""}
             </>
           ) : null}
+          {syncError ? ` · 동기화 오류: ${syncError}` : ""}
         </div>
       </div>
     </div>

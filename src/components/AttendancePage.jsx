@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { formatKoreanSunday } from "../utils/date";
 import { avatarMap } from "../data/avatarMap";
 
@@ -8,6 +9,7 @@ function Avatar({ memberId, fallback, photoUrl }) {
 }
 
 export default function AttendancePage({
+  grade,
   sunday,
   onPrevWeek,
   onNextWeek,
@@ -17,8 +19,24 @@ export default function AttendancePage({
   onToggle,
   onMarkAll,
 }) {
-  const present = members.filter((m) => attendanceMap[m.id]).length;
-  const absent = members.length - present;
+  const [classFilter, setClassFilter] = useState("all");
+  const classOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          members
+            .map((m) => (typeof m.className === "string" ? m.className.trim() : ""))
+            .filter(Boolean)
+        )
+      ),
+    [members]
+  );
+  const visibleMembers =
+    classFilter === "all"
+      ? members
+      : members.filter((m) => (m.className || "").trim() === classFilter);
+  const present = visibleMembers.filter((m) => attendanceMap[m.id]).length;
+  const absent = visibleMembers.length - present;
 
   return (
     <>
@@ -38,9 +56,27 @@ export default function AttendancePage({
         </div>
 
         <div className="miniSummary">
+          <span>{grade}학년</span>
+          <span>반 필터: {classFilter === "all" ? "전체" : `${classFilter}반`}</span>
           <span>출석 {present}명</span>
           <span>결석 {absent}명</span>
         </div>
+
+        <label className="field">
+          <div className="fieldLabel">반별 보기</div>
+          <select
+            className="fieldInput"
+            value={classFilter}
+            onChange={(e) => setClassFilter(e.target.value)}
+          >
+            <option value="all">전체</option>
+            {classOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}반
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="actions">
           <button type="button" className="secondary" onClick={() => onMarkAll(true)}>
@@ -59,11 +95,11 @@ export default function AttendancePage({
       <section className="section">
         <div className="sectionHeader">
           <h2 className="sectionTitle">명단</h2>
-          <div className="sectionCount">{members.length}명</div>
+          <div className="sectionCount">{visibleMembers.length}명</div>
         </div>
 
         <div className="listCard">
-          {members.map((m) => {
+          {visibleMembers.map((m) => {
             const checked = !!attendanceMap[m.id];
             const profile = profiles[m.id] || {};
             const photoUrl = profile.photoUrl || profile.photoDataUrl;

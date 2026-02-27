@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function Avatar({ photoUrl, fallback }) {
   if (photoUrl) return <img className="avatarImg" src={photoUrl} alt="" />;
@@ -14,15 +14,16 @@ function parseClassNames(text) {
 
 export default function StudentsPage({
   grade,
+  birthYearKey,
   classNames,
   members,
   profiles,
+  onChangeGrade,
   onSetClassConfig,
   onAddMember,
   onRemoveMember,
   onOpenDetail,
 }) {
-  const [nextGrade, setNextGrade] = useState(grade || "");
   const [classNamesInput, setClassNamesInput] = useState(
     (classNames || []).join(", ")
   );
@@ -37,10 +38,13 @@ export default function StudentsPage({
     [classNamesInput]
   );
 
+  useEffect(() => {
+    setClassNamesInput((classNames || []).join(", "));
+  }, [classNames]);
+
   const saveClassConfig = () => {
     const parsedClassNames = parseClassNames(classNamesInput);
     onSetClassConfig({
-      grade: nextGrade.trim(),
       classNames: parsedClassNames,
     });
 
@@ -115,12 +119,15 @@ export default function StudentsPage({
         <div className="manageGrid">
           <label className="field">
             <div className="fieldLabel">학년</div>
-            <input
+            <select
               className="fieldInput"
-              value={nextGrade}
-              onChange={(e) => setNextGrade(e.target.value)}
-              placeholder="예: 3"
-            />
+              value={grade}
+              onChange={(e) => onChangeGrade(e.target.value)}
+            >
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+            </select>
           </label>
 
           <label className="field">
@@ -138,11 +145,11 @@ export default function StudentsPage({
             className="secondary manageBtn"
             onClick={saveClassConfig}
           >
-            학년/반 저장
+            반 목록 저장
           </button>
 
           <div className="hintSmall">
-            반을 여러 개 등록하면 구성원 추가 시 반을 선택할 수 있습니다.
+            Firebase 저장 key: {birthYearKey || "미지정"} (예: 2026년 1학년=2010)
           </div>
 
           <label className="field">
