@@ -23,6 +23,19 @@ function getAllSundaysOfYear(year) {
   return list;
 }
 
+function getLatestSundayOfYear(year, today = new Date()) {
+  const endOfYear = new Date(year, 11, 31);
+  const isPastYear = today.getFullYear() > year;
+  const isFutureYear = today.getFullYear() < year;
+  const latestBase = isFutureYear ? null : isPastYear ? endOfYear : today;
+  if (!latestBase) return null;
+
+  const d = new Date(latestBase);
+  d.setDate(d.getDate() - d.getDay());
+  if (isPastYear) return endOfYear;
+  return d.getFullYear() === year ? d : null;
+}
+
 function isMonthStart(sundays, idx) {
   if (idx === 0) return true;
   return sundays[idx - 1].getMonth() !== sundays[idx].getMonth();
@@ -30,6 +43,15 @@ function isMonthStart(sundays, idx) {
 
 export default function AnnualPage({ year, members, attendanceByWeek }) {
   const sundays = useMemo(() => getAllSundaysOfYear(year), [year]);
+  const latestSunday = useMemo(() => getLatestSundayOfYear(year), [year]);
+  const latestIndex = useMemo(
+    () =>
+      latestSunday
+        ? sundays.findIndex((d) => toYMD(d) === toYMD(latestSunday))
+        : -1,
+    [latestSunday, sundays]
+  );
+  const totalWeeksUntilLatest = latestIndex >= 0 ? latestIndex + 1 : 0;
 
   const matrix = useMemo(() => {
     const map = {};
@@ -51,24 +73,24 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
   const summary = useMemo(() => {
     const perMember = {};
     members.forEach((m) => {
-      let recorded = 0;
       let present = 0;
 
-      (matrix[m.id] || []).forEach((v) => {
-        if (v === null) return;
-        recorded += 1;
+      (matrix[m.id] || []).forEach((v, idx) => {
+        if (idx > latestIndex) return;
         if (v === true) present += 1;
       });
 
       perMember[m.id] = {
         present,
-        absent: recorded - present,
-        recorded,
-        pct: recorded ? Math.round((present / recorded) * 1000) / 10 : 0,
+        absent: Math.max(totalWeeksUntilLatest - present, 0),
+        totalWeeksUntilLatest,
+        pct: totalWeeksUntilLatest
+          ? Math.round((present / totalWeeksUntilLatest) * 1000) / 10
+          : 0,
       };
     });
     return perMember;
-  }, [members, matrix]);
+  }, [latestIndex, matrix, members, totalWeeksUntilLatest]);
 
   return (
     <>
@@ -80,7 +102,9 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
         <div className="miniSummary">
           <span>주차 {sundays.length}</span>
           <span>인원 {members.length}명</span>
-          <span>컴팩트 보기 적용</span>
+          <span>
+            출석률 기준: 최신 주차까지 {totalWeeksUntilLatest}주
+          </span>
         </div>
       </div>
 
@@ -152,12 +176,12 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
 
                     <td
                       className="sumCell"
-                      title={`출석 ${s.present} / 기록 ${s.recorded}, 결석 ${s.absent}`}
+                      title={`출석 ${s.present} / 기준 주차 ${s.totalWeeksUntilLatest}, 결석 ${s.absent}`}
                     >
                       <div className="sumCellInner">
                         <div className="pct">{s.pct}%</div>
                         <div className="sub">
-                          {s.present}/{s.recorded}
+                          {s.present}/{s.totalWeeksUntilLatest}
                         </div>
                       </div>
                     </td>

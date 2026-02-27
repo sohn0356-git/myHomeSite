@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatKoreanSunday } from "../utils/date";
 import { avatarMap } from "../data/avatarMap";
 
@@ -31,6 +31,11 @@ export default function AttendancePage({
       ),
     [members]
   );
+  useEffect(() => {
+    if (classFilter === "all") return;
+    if (classOptions.includes(classFilter)) return;
+    setClassFilter("all");
+  }, [classFilter, classOptions]);
   const visibleMembers =
     classFilter === "all"
       ? members
@@ -79,13 +84,17 @@ export default function AttendancePage({
         </label>
 
         <div className="actions">
-          <button type="button" className="secondary" onClick={() => onMarkAll(true)}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => onMarkAll(true, visibleMembers.map((m) => m.id))}
+          >
             전체 출석
           </button>
           <button
             type="button"
             className="secondary"
-            onClick={() => onMarkAll(false)}
+            onClick={() => onMarkAll(false, visibleMembers.map((m) => m.id))}
           >
             전체 결석
           </button>

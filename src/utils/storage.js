@@ -7,7 +7,7 @@ import {
 } from "firebase/storage";
 import { firebaseEnabled, realtimeDb, storageBucket } from "../lib/firebase";
 
-const LOCAL_KEY_BASE = "classSite.v4";
+const LOCAL_KEY_BASE = "classSite.v5";
 const ROOT_PATH = "classSite/byBirthYear";
 let remoteWriteChain = Promise.resolve();
 
@@ -26,42 +26,81 @@ function getScope(grade) {
   };
 }
 
-function normalizeState(raw, fallbackMembers = []) {
-  const legacyClassName =
-    raw && typeof raw.className === "string" ? raw.className.trim() : "";
-  const nextClassNames = Array.isArray(raw?.classNames)
-    ? raw.classNames
-        .map((v) => (typeof v === "string" ? v.trim() : ""))
-        .filter(Boolean)
-    : legacyClassName
-    ? [legacyClassName]
-    : [];
+export function birthDateToKey(birthDate) {
+  if (typeof birthDate !== "string") return "";
+  const cleaned = birthDate.replaceAll("-", "").trim();
+  return /^\d{8}$/.test(cleaned) ? cleaned : "";
+}
 
-  const rawMembers = Array.isArray(raw?.members) ? raw.members : fallbackMembers;
-  const members = rawMembers.map((member, idx) => {
-    const safeRole = member?.role === "선생님" ? "선생님" : "학생";
+function normalizeState(raw, fallbackMembers = []) {
+  const rawClasses = Array.isArray(raw?.classes) ? raw.classes : [];
+  const fallbackClassNames = Array.isArray(raw?.classNames) ? raw.classNames : [];
+  const classesFromLegacy = fallbackClassNames
+    .map((name) => (typeof name === "string" ? name.trim() : ""))
+    .filter(Boolean)
+    .map((name) => ({
+      id: `class_${name}`,
+      name,
+    }));
+
+  const classes = (rawClasses.length ? rawClasses : classesFromLegacy)
+    .map((item) => ({
+      id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : "",
+      name:
+        typeof item?.name === "string" && item.name.trim() ? item.name.trim() : "",
+    }))
+    .filter((item) => item.id && item.name);
+
+  const classByName = new Map(classes.map((item) => [item.name, item.id]));
+  const rawPeople = Array.isArray(raw?.people)
+    ? raw.people
+    : Array.isArray(raw?.members)
+    ? raw.members
+    : fallbackMembers;
+  const people = rawPeople.map((person, idx) => {
+    const safeRole = person?.role === "선생님" ? "선생님" : "학생";
     const safeName =
-      typeof member?.name === "string" && member.name.trim()
-        ? member.name.trim()
+      typeof person?.name === "string" && person.name.trim()
+        ? person.name.trim()
         : `구성원${idx + 1}`;
-    const safeClassName =
-      typeof member?.className === "string" ? member.className.trim() : "";
+    const birthDate =
+      typeof person?.birthDate === "string" && person.birthDate.trim()
+        ? person.birthDate.trim()
+        : "";
+    const birthKey = birthDateToKey(birthDate);
+    const legacyClassName =
+      typeof person?.className === "string" ? person.className.trim() : "";
+    const classId =
+      typeof person?.classId === "string" && person.classId.trim()
+        ? person.classId.trim()
+        : classByName.get(legacyClassName) || "";
+    const fallbackId =
+      typeof person?.id === "string" && person.id.trim()
+        ? person.id.trim()
+        : `person_${idx + 1}`;
+    const id = safeRole === "학생" && birthKey ? birthKey : fallbackId;
 
     return {
-      ...member,
+      id,
       name: safeName,
       role: safeRole,
-      className: safeClassName,
+      classId,
+      birthDate,
     };
   });
 
   if (!raw || typeof raw !== "object") {
     return {
-      grade: "",
-      classNames: [],
-      members: fallbackMembers.map((member) => ({
-        ...member,
-        className: typeof member?.className === "string" ? member.className : "",
+      classes: [],
+      people: fallbackMembers.map((member, idx) => ({
+        id:
+          typeof member?.id === "string" && member.id
+            ? member.id
+            : `person_${idx + 1}`,
+        name: member?.name || `구성원${idx + 1}`,
+        role: member?.role === "선생님" ? "선생님" : "학생",
+        classId: "",
+        birthDate: "",
       })),
       attendanceByWeek: {},
       profiles: {},
@@ -69,9 +108,8 @@ function normalizeState(raw, fallbackMembers = []) {
   }
 
   return {
-    grade: typeof raw.grade === "string" ? raw.grade.trim() : "",
-    classNames: nextClassNames,
-    members,
+    classes,
+    people,
     attendanceByWeek: raw.attendanceByWeek || {},
     profiles: raw.profiles || {},
   };

@@ -11,6 +11,7 @@ import StudentDetail from "./components/StudentDetail";
 import { seedMembers } from "./data/seedMembers";
 import { addDays, getSunday, weekKey } from "./utils/date";
 import {
+  birthDateToKey,
   deleteMemberPhotoByPath,
   ensureRemoteState,
   gradeToBirthYear,
@@ -23,16 +24,20 @@ import {
 
 function buildInitialState() {
   return {
-    classNames: [],
-    members: seedMembers,
+    classes: [],
+    people: seedMembers,
     attendanceByWeek: {},
     profiles: {},
   };
 }
 
-function createMemberId(role) {
-  const prefix = role === "선생님" ? "t" : "s";
+function createPersonId(role) {
+  const prefix = role === "선생님" ? "t" : "p";
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function createClassId(name) {
+  return `class_${name}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
 }
 
 function formatFirebaseError(err, fallbackMessage) {
@@ -53,7 +58,23 @@ export default function App() {
   const [lastWriteResult, setLastWriteResult] = useState(null);
   const [syncError, setSyncError] = useState("");
 
-  const { classNames, members, attendanceByWeek, profiles } = state;
+  const { classes, people, attendanceByWeek, profiles } = state;
+  const classNameById = useMemo(
+    () =>
+      classes.reduce((acc, item) => {
+        acc[item.id] = item.name;
+        return acc;
+      }, {}),
+    [classes]
+  );
+  const members = useMemo(
+    () =>
+      people.map((person) => ({
+        ...person,
+        className: classNameById[person.classId] || "",
+      })),
+    [people, classNameById]
+  );
   const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
   const attendanceMap = attendanceByWeek[currentWeekKey] || {};
   const birthYearKey = useMemo(
@@ -149,10 +170,11 @@ export default function App() {
     });
   };
 
-  const onMarkAll = (value) => {
-    const next = {};
-    members.forEach((m) => {
-      next[m.id] = value;
+  const onMarkAll = (value, memberIds) => {
+    const next = { ...attendanceMap };
+    const targetIds = Array.isArray(memberIds) ? memberIds : members.map((m) => m.id);
+    targetIds.forEach((id) => {
+      next[id] = value;
     });
     setAttendanceForWeek(next);
   };
@@ -170,34 +192,76 @@ export default function App() {
     });
   };
 
-  const onSetClassConfig = ({ classNames: nextClassNames }) => {
+  const onCreateClass = (className) => {
+    const trimmed = className.trim();
+    if (!trimmed) return { ok: false, error: "반 이름을 입력해 주세요." };
+    if (classes.some((item) => item.name === trimmed)) {
+      return { ok: false, error: "이미 있는 반 이름입니다." };
+    }
+
     persist({
       ...state,
-      classNames: nextClassNames,
+      classes: [...classes, { id: createClassId(trimmed), name: trimmed }],
+    });
+    return { ok: true };
+  };
+
+  const onRemoveClass = (classId) => {
+    const nextPeople = people.map((person) =>
+      person.classId === classId ? { ...person, classId: "" } : person
+    );
+    persist({
+      ...state,
+      classes: classes.filter((item) => item.id !== classId),
+      people: nextPeople,
     });
   };
 
-  const onAddMember = ({ name, role, className }) => {
+  const onAddMember = ({ name, role, classId, birthDate }) => {
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+    if (!trimmedName) {
+      return { ok: false, error: "이름을 입력해 주세요." };
+    }
+
+    const normalizedBirthDate = (birthDate || "").trim();
+    const birthKey = birthDateToKey(normalizedBirthDate);
+    let personId = createPersonId(role);
+
+    if (role === "학생") {
+      if (!birthKey) {
+        return {
+          ok: false,
+          error: "학생은 생년월일(YYYY-MM-DD) 입력이 필요합니다.",
+        };
+      }
+      if (people.some((person) => person.id === birthKey)) {
+        return {
+          ok: false,
+          error: "같은 생년월일 key가 이미 존재합니다. 형제/동명이인이면 형식 조정이 필요합니다.",
+        };
+      }
+      personId = birthKey;
+    }
 
     const nextMember = {
-      id: createMemberId(role),
+      id: personId,
       name: trimmedName,
       role,
-      className: className || "",
+      classId: classId || "",
+      birthDate: role === "학생" ? normalizedBirthDate : "",
     };
 
     persist({
       ...state,
-      members: [...members, nextMember],
+      people: [...people, nextMember],
     });
+    return { ok: true };
   };
 
   const onRemoveMember = async (memberId) => {
     const removedProfile = profiles[memberId];
 
-    const nextMembers = members.filter((m) => m.id !== memberId);
+    const nextPeople = people.filter((m) => m.id !== memberId);
     const nextProfiles = { ...profiles };
     delete nextProfiles[memberId];
 
@@ -220,7 +284,7 @@ export default function App() {
 
     persist({
       ...state,
-      members: nextMembers,
+      people: nextPeople,
       profiles: nextProfiles,
       attendanceByWeek: nextAttendanceByWeek,
     });
@@ -322,12 +386,13 @@ export default function App() {
         {activeTab === "members" && (
           <StudentsPage
             grade={selectedGrade}
-            classNames={classNames}
+            classes={classes}
             members={members}
             profiles={profiles}
             birthYearKey={birthYearKey}
             onChangeGrade={onChangeGrade}
-            onSetClassConfig={onSetClassConfig}
+            onCreateClass={onCreateClass}
+            onRemoveClass={onRemoveClass}
             onAddMember={onAddMember}
             onRemoveMember={onRemoveMember}
             onOpenDetail={(id) => setDetailMemberId(id)}
