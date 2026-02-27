@@ -10,7 +10,6 @@ export default function StudentDetail({
   firebaseEnabled,
   onClose,
 }) {
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
 
   const safeProfile = profile || {};
@@ -41,12 +40,9 @@ export default function StudentDetail({
     }
 
     try {
-      setIsUploading(true);
       await onUploadPhoto(member.id, file);
     } catch (err) {
       setError("사진 업로드에 실패했습니다.");
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -55,16 +51,7 @@ export default function StudentDetail({
       <div className="modalCard">
         <div className="modalTop">
           <div>
-            <label className="modalTitle uploadByName">
-              {member.role} · {member.name}
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                disabled={isUploading}
-                onChange={handleUpload}
-              />
-            </label>
+            <div className="modalTitle">{member.role} · {member.name}</div>
             <div className="modalSub">프로필 / 인적사항</div>
           </div>
           <button type="button" className="secondary" onClick={onClose}>
@@ -73,29 +60,20 @@ export default function StudentDetail({
         </div>
 
         <div className="profileRow">
-          <div className="profilePhotoSmall">
+          <label className="profilePhotoSmall profilePhotoClick">
             {avatar ? (
               <img className="profilePhotoImg" src={avatar} alt="" />
             ) : (
               <div className="profilePhotoFallback">{member.name.slice(0, 1)}</div>
             )}
-          </div>
-
-          <div className="profileActions">
-            <div className="actions">
-              <label className="fileBtn secondary">
-                {isUploading ? "업로드 중..." : "사진 업로드"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  disabled={isUploading}
-                  onChange={handleUpload}
-                />
-              </label>
-            </div>
-            {error ? <div className="hintSmall">{error}</div> : null}
-          </div>
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleUpload}
+            />
+          </label>
+          {error ? <div className="hintSmall">{error}</div> : null}
         </div>
 
         <div className="formGrid">
@@ -119,14 +97,13 @@ export default function StudentDetail({
             />
           </label>
 
-          <label className="field fieldFull">
-            <div className="fieldLabel">메모 / 특이사항</div>
-            <textarea
-              className="fieldTextarea"
-              value={safeProfile.note || ""}
-              onChange={(e) => update({ note: e.target.value })}
-              placeholder="알레르기, 관심사, 기도제목 등"
-              rows={5}
+          <label className="field">
+            <div className="fieldLabel">생년월일</div>
+            <input
+              type="date"
+              className="fieldInput"
+              value={safeProfile.birthDate || ""}
+              onChange={(e) => update({ birthDate: e.target.value })}
             />
           </label>
         </div>

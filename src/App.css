@@ -461,6 +461,7 @@ button:active {
   grid-template-columns: 56px 1fr;
   padding: 10px;
   border-radius: 16px;
+  min-height: 78px;
 }
 
 .boardPersonCard .personAvatar {
@@ -471,10 +472,12 @@ button:active {
 
 .boardPersonCard .personName {
   font-size: 14px;
+  margin-top: 2px;
 }
 
-.boardPersonCard .personHint {
-  margin-top: 4px;
+.boardPersonCard .personMeta {
+  display: flex;
+  align-items: center;
 }
 
 .teacherMark {
@@ -491,6 +494,24 @@ button:active {
   background: linear-gradient(180deg, #ffe9ad, #ffd166);
   border: 1px solid rgba(138, 93, 0, 0.32);
   z-index: 2;
+}
+
+.cardTrashBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  color: #9f1d1d;
+  padding: 0;
+  z-index: 3;
 }
 
 .personCardWrap {
@@ -809,25 +830,6 @@ button:active {
   font-size: 16px;
 }
 
-.uploadByName {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  color: #114a75;
-}
-
-.uploadByName::after {
-  content: "사진 바꾸기";
-  font-size: 11px;
-  font-weight: 700;
-  color: #3b82b2;
-  background: rgba(59, 130, 178, 0.1);
-  border: 1px solid rgba(59, 130, 178, 0.25);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
 .modalSub {
   color: var(--muted);
   font-size: 12px;
@@ -848,6 +850,10 @@ button:active {
   overflow: hidden;
   border: 1px solid rgba(15, 111, 184, 0.2);
   background: rgba(15, 111, 184, 0.08);
+}
+
+.profilePhotoClick {
+  cursor: pointer;
 }
 
 .profilePhotoImg {
@@ -935,13 +941,17 @@ button:active {
 }
 
 @media (max-width: 640px) {
+  body {
+    background: #f4f8fb;
+  }
+
   .page {
-    padding: 12px;
+    padding: 10px;
   }
 
   .topBar {
     top: 8px;
-    padding: 14px;
+    padding: 12px;
     flex-direction: column;
     align-items: stretch;
   }
@@ -958,6 +968,8 @@ button:active {
   .tabBtn {
     flex: 1;
     text-align: center;
+    font-size: 14px;
+    padding: 10px 12px;
   }
 
   .weekBar {
@@ -977,7 +989,8 @@ button:active {
   }
 
   .toggle {
-    min-width: 96px;
+    min-width: 112px;
+    padding: 11px 14px;
   }
 
   .gridCard {
@@ -990,6 +1003,7 @@ button:active {
 
   .personCard {
     grid-template-columns: 68px 1fr;
+    padding: 10px;
   }
 
   .personAvatar {
@@ -998,17 +1012,39 @@ button:active {
     border-radius: 14px;
   }
 
+  .dndColumn {
+    padding: 12px;
+  }
+
+  .boardPersonCard {
+    grid-template-columns: 52px 1fr;
+    min-height: 74px;
+  }
+
+  .boardPersonCard .personAvatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .cardTrashBtn {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
   .profileRow {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .profilePhotoSmall {
-    width: 140px;
-    height: 140px;
+    width: 120px;
+    height: 120px;
   }
 
   .formGrid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .nameHead,

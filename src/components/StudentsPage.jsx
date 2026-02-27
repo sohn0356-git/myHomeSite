@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { avatarMap } from "../data/avatarMap";
 import { getPatternAvatarDataUrl } from "../utils/avatarPattern";
 
@@ -47,15 +47,6 @@ export default function StudentsPage({
   const [formError, setFormError] = useState("");
   const [dragMemberId, setDragMemberId] = useState("");
 
-  const classNameById = useMemo(
-    () =>
-      (classes || []).reduce((acc, item) => {
-        acc[item.id] = item.name;
-        return acc;
-      }, {}),
-    [classes]
-  );
-
   useEffect(() => {
     if (!memberClassId) return;
     if (classes.some((item) => item.id === memberClassId)) return;
@@ -95,17 +86,31 @@ export default function StudentsPage({
   const renderMemberCard = (member) => {
     const profile = profiles[member.id] || {};
     const photoUrl = profile.photoUrl || profile.photoDataUrl;
-    const className = classNameById[member.classId] || "";
+
+    const removeMember = (event) => {
+      event.stopPropagation();
+      const ok = window.confirm(`${member.name} 구성원을 삭제할까요?`);
+      if (!ok) return;
+      onRemoveMember(member.id);
+    };
+
     return (
       <div key={member.id} className="boardCardWrap">
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           className={`personCard boardPersonCard ${
             member.role === "선생님" ? "personTeacher" : "personStudent"
           }`}
           draggable
           onDragStart={() => setDragMemberId(member.id)}
           onClick={() => onOpenDetail(member.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpenDetail(member.id);
+            }
+          }}
         >
           <span className="personShape personShapeA" aria-hidden="true" />
           <span className="personShape personShapeB" aria-hidden="true" />
@@ -114,25 +119,22 @@ export default function StudentsPage({
               ★
             </span>
           ) : null}
+          <button
+            type="button"
+            className="cardTrashBtn"
+            onClick={removeMember}
+            aria-label={`${member.name} 삭제`}
+            title="삭제"
+          >
+            🗑
+          </button>
           <div className="personAvatar">
             <Avatar member={member} photoUrl={photoUrl} />
           </div>
           <div className="personMeta">
             <div className="personName">{member.name}</div>
-            <div className="personRole">
-              {member.role}
-              {className ? ` · ${className}` : " · 반 미지정"}
-            </div>
-            <div className="personHint">{profile.note || "메모를 입력해 주세요"}</div>
           </div>
-        </button>
-        <button
-          type="button"
-          className="memberRemove"
-          onClick={() => onRemoveMember(member.id)}
-        >
-          제거
-        </button>
+        </div>
       </div>
     );
   };
