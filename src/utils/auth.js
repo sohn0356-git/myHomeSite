@@ -1,8 +1,29 @@
-import { get, ref } from "firebase/database";
+import { get, ref, set } from "firebase/database";
 import { firebaseEnabled, realtimeDb } from "../lib/firebase";
 
 const SESSION_KEY = "classSite.session.v1";
 const INVALID_KEY_CHARS = /[.#$/\[\]]/;
+
+async function pathExists(path) {
+  const snap = await get(ref(realtimeDb, path));
+  return snap.exists();
+}
+
+function makeUidCandidate() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `grp_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
+  }
+  return `grp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function generateUniqueGroupUid() {
+  for (let i = 0; i < 20; i += 1) {
+    const uid = makeUidCandidate();
+    const used = await pathExists(`classSite/groups/${uid}`);
+    if (!used) return uid;
+  }
+  throw new Error("group_uid_generation_failed");
+}
 
 function readGroupCredential(groupName) {
   const paths = [
@@ -15,17 +36,25 @@ function readGroupCredential(groupName) {
     if (found) return found;
     const snap = await get(ref(realtimeDb, path));
     if (!snap.exists()) return null;
-    return snap.val();
+    return { path, data: snap.val() };
   }, Promise.resolve(null));
 }
 
-function toSession(groupName, account) {
-  if (typeof groupName !== "string" || !groupName.trim()) return null;
+async function ensureGroupUid(credentialPath, account, groupName) {
+  const existing =
+    account?.groupUid || account?.group_id || account?.groupId || account?.group;
+  if (typeof existing === "string" && existing.trim()) return existing.trim();
 
+  const created = await generateUniqueGroupUid();
+  await set(ref(realtimeDb, `${credentialPath}/groupUid`), created);
+  return created;
+}
+
+function toSession(groupName, groupUid, account) {
   return {
     groupName,
-    groupUid: groupName.trim(),
-    displayName:
+    groupUid,
+    name:
       typeof account?.name === "string" && account.name.trim()
         ? account.name.trim()
         : groupName,
@@ -47,10 +76,11 @@ export async function loginWithCredentials(groupNameInput, passwordInput) {
   }
 
   try {
-    const account = await readGroupCredential(groupName);
-    if (!account || typeof account !== "object") {
+    const credential = await readGroupCredential(groupName);
+    if (!credential || typeof credential.data !== "object") {
       return { ok: false, error: "존재하지 않는 그룹입니다." };
     }
+    const account = credential.data;
 
     const savedPassword = String(
       account.password ?? account.pass ?? account.pw ?? ""
@@ -59,10 +89,8 @@ export async function loginWithCredentials(groupNameInput, passwordInput) {
       return { ok: false, error: "그룹 비밀번호가 일치하지 않습니다." };
     }
 
-    const session = toSession(groupName, account);
-    if (!session) {
-      return { ok: false, error: "그룹 정보에 group uid가 없습니다." };
-    }
+    const groupUid = await ensureGroupUid(credential.path, account, groupName);
+    const session = toSession(groupName, groupUid, account);
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return { ok: true, session };

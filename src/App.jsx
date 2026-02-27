@@ -348,8 +348,7 @@ export default function App() {
       <div className="container">
         <TopBar
           title={appTitle}
-          subtitle="출석 / 연간 / 구성원 관리"
-          groupLabel={session.displayName || session.groupName}
+          groupLabel={session.name || session.groupName}
           onLogout={onLogout}
           activeTab={activeTab}
           onChangeTab={(tab) => {

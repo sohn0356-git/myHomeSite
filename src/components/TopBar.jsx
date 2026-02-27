@@ -12,7 +12,7 @@ export default function TopBar({
     <header className="topBar">
       <div className="topBarLeft">
         <div className="topTitle">{title}</div>
-        <div className="topSub">{subtitle}</div>
+        {subtitle ? <div className="topSub">{subtitle}</div> : null}
         {groupLabel ? <div className="topSub">{groupLabel}</div> : null}
       </div>
 
