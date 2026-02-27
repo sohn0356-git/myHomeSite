@@ -59,6 +59,7 @@ export default function App() {
   const [sunday, setSunday] = useState(getSunday());
   const [selectedGrade, setSelectedGrade] = useState("1");
   const [attendanceView, setAttendanceView] = useState("1");
+  const [annualView, setAnnualView] = useState("1");
   const [state, setState] = useState(buildInitialState);
   const [syncMode, setSyncMode] = useState(
     isFirebaseEnabled() ? "firebase" : "local"
@@ -334,6 +335,7 @@ export default function App() {
     setDetailMemberId(null);
     setSelectedGrade(nextGrade);
     setAttendanceView(nextGrade);
+    setAnnualView(nextGrade);
   };
 
   const onChangeAttendanceView = (nextView) => {
@@ -341,6 +343,15 @@ export default function App() {
     setAttendanceView(nextView);
     if (nextView === "teacher") return;
     setSelectedGrade(nextView);
+    setAnnualView(nextView);
+  };
+
+  const onChangeAnnualView = (nextView) => {
+    setDetailMemberId(null);
+    setAnnualView(nextView);
+    if (nextView === "teacher") return;
+    setSelectedGrade(nextView);
+    setAttendanceView(nextView);
   };
 
   const onLogin = async (groupName, password) => {
@@ -351,6 +362,7 @@ export default function App() {
     setSunday(getSunday());
     setSelectedGrade("1");
     setAttendanceView("1");
+    setAnnualView("1");
     return result;
   };
 
@@ -399,8 +411,8 @@ export default function App() {
         {activeTab === "annual" && (
           <AnnualPage
             year={year}
-            grade={selectedGrade}
-            onChangeGrade={onChangeGrade}
+            grade={annualView}
+            onChangeGrade={onChangeAnnualView}
             classes={classes}
             members={members}
             attendanceByWeek={attendanceByWeek}

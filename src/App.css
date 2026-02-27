@@ -381,15 +381,18 @@ button:active {
 }
 
 .gradePicker {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .gradeBtn {
+  flex: 1 1 0;
   background: #fff;
   color: var(--muted);
   border: 1px solid var(--line);
+  white-space: nowrap;
+  padding: 9px 8px;
 }
 
 .gradeBtnActive {
@@ -979,6 +982,11 @@ button:active {
     text-align: center;
     font-size: 14px;
     padding: 10px 12px;
+  }
+
+  .gradeBtn {
+    font-size: 12px;
+    padding: 8px 6px;
   }
 
   .weekBar {

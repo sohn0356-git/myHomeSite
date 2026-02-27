@@ -44,14 +44,14 @@ function isMonthStart(sundays, idx) {
 function GradePicker({ grade, onChange }) {
   return (
     <div className="gradePicker" role="tablist" aria-label="grade picker">
-      {["1", "2", "3"].map((value) => (
+      {["1", "2", "3", "teacher"].map((value) => (
         <button
           key={value}
           type="button"
           className={`gradeBtn ${grade === value ? "gradeBtnActive" : ""}`}
           onClick={() => onChange(value)}
         >
-          {value}학년
+          {value === "teacher" ? "선생님" : `${value}학년`}
         </button>
       ))}
     </div>
@@ -89,10 +89,19 @@ export default function AnnualPage({
     () => Array.from(new Set(members.map((m) => m.className).filter(Boolean))),
     [members]
   );
+  const roleFilteredMembers = useMemo(
+    () =>
+      grade === "teacher"
+        ? members.filter((m) => m.role === "선생님")
+        : members.filter((m) => m.role !== "선생님"),
+    [grade, members]
+  );
   const visibleMembers =
-    classFilter === "all"
-      ? members
-      : members.filter((m) => (m.className || "") === classFilter);
+    grade === "teacher"
+      ? roleFilteredMembers
+      : classFilter === "all"
+      ? roleFilteredMembers
+      : roleFilteredMembers.filter((m) => (m.className || "") === classFilter);
 
   const matrix = useMemo(() => {
     const map = {};
@@ -143,21 +152,23 @@ export default function AnnualPage({
           <span>조회 {visibleMembers.length}명</span>
           <span>기준 주차 {totalWeeksUntilLatest}주</span>
         </div>
-        <label className="field">
-          <div className="fieldLabel">반 선택</div>
-          <select
-            className="fieldInput"
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-          >
-            <option value="all">전체</option>
-            {classOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {grade !== "teacher" ? (
+          <label className="field">
+            <div className="fieldLabel">반 선택</div>
+            <select
+              className="fieldInput"
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+            >
+              <option value="all">전체</option>
+              {classOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
 
       <section className="section">
