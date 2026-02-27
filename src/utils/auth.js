@@ -26,18 +26,11 @@ async function generateUniqueGroupUid() {
 }
 
 function readGroupCredential(groupName) {
-  const paths = [
-    `classSite/groupCredentials/${groupName}`,
-    `groupCredentials/${groupName}`,
-    `classSite/groups/${groupName}/credential`,
-  ];
-  return paths.reduce(async (prev, path) => {
-    const found = await prev;
-    if (found) return found;
-    const snap = await get(ref(realtimeDb, path));
+  const path = `classSite/groupCredentials/${groupName}`;
+  return get(ref(realtimeDb, path)).then((snap) => {
     if (!snap.exists()) return null;
     return { path, data: snap.val() };
-  }, Promise.resolve(null));
+  });
 }
 
 async function ensureGroupUid(credentialPath, account, groupName) {
@@ -96,6 +89,26 @@ export async function loginWithCredentials(groupNameInput, passwordInput) {
     return { ok: true, session };
   } catch {
     return { ok: false, error: "로그인 중 오류가 발생했습니다." };
+  }
+}
+
+export async function refreshSessionFromCredential(currentSession) {
+  if (!firebaseEnabled) return null;
+  if (!currentSession?.groupName) return null;
+  try {
+    const credential = await readGroupCredential(currentSession.groupName);
+    if (!credential || typeof credential.data !== "object") return null;
+    const account = credential.data;
+    const groupUid = await ensureGroupUid(
+      credential.path,
+      account,
+      currentSession.groupName
+    );
+    const refreshed = toSession(currentSession.groupName, groupUid, account);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(refreshed));
+    return refreshed;
+  } catch {
+    return null;
   }
 }
 

@@ -11,7 +11,12 @@ import LoginPage from "./components/LoginPage";
 
 import { seedMembers } from "./data/seedMembers";
 import { addDays, getSunday, weekKey } from "./utils/date";
-import { clearSession, loadSession, loginWithCredentials } from "./utils/auth";
+import {
+  clearSession,
+  loadSession,
+  loginWithCredentials,
+  refreshSessionFromCredential,
+} from "./utils/auth";
 import {
   deleteMemberPhotoByPath,
   ensureRemoteState,
@@ -83,6 +88,24 @@ export default function App() {
 
   const [detailMemberId, setDetailMemberId] = useState(null);
   const detailMember = members.find((m) => m.id === detailMemberId) || null;
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    const syncSession = async () => {
+      const refreshed = await refreshSessionFromCredential(session);
+      if (cancelled || !refreshed) return;
+      const changed =
+        refreshed.groupUid !== session.groupUid ||
+        refreshed.name !== session.name ||
+        refreshed.groupName !== session.groupName;
+      if (changed) setSession(refreshed);
+    };
+    syncSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   useEffect(() => {
     if (!session) {
