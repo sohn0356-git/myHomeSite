@@ -20,17 +20,11 @@ function readGroupCredential(groupName) {
 }
 
 function toSession(groupName, account) {
-  const groupUid =
-    account?.groupUid ||
-    account?.group_id ||
-    account?.groupId ||
-    account?.group ||
-    groupName;
-  if (typeof groupUid !== "string" || !groupUid.trim()) return null;
+  if (typeof groupName !== "string" || !groupName.trim()) return null;
 
   return {
     groupName,
-    groupUid: groupUid.trim(),
+    groupUid: groupName.trim(),
     displayName:
       typeof account?.name === "string" && account.name.trim()
         ? account.name.trim()

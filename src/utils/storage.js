@@ -20,17 +20,21 @@ export function gradeToBirthYear(grade, today = new Date()) {
 function getScope(groupUid, grade) {
   const birthYear = gradeToBirthYear(grade);
   const safeGroupUid = typeof groupUid === "string" && groupUid.trim() ? groupUid.trim() : "unknown";
+  const groupRootPath = `${ROOT_PATH}/${safeGroupUid}`;
   return {
     localKey: `${LOCAL_KEY_BASE}.${safeGroupUid}.${birthYear || "unknown"}`,
-    remotePath: `${ROOT_PATH}/${safeGroupUid}/byBirthYear/${birthYear || "unknown"}`,
+    teachersLocalKey: `${LOCAL_KEY_BASE}.${safeGroupUid}.teachers`,
+    remotePath: `${groupRootPath}/byBirthYear/${birthYear || "unknown"}`,
+    teachersPath: `${groupRootPath}/teachers`,
+    groupRootPath,
     groupUid: safeGroupUid,
     birthYear,
   };
 }
 
-function normalizeState(raw, fallbackMembers = [], birthYearKey = "") {
-  const rawClasses = Array.isArray(raw?.classes) ? raw.classes : [];
-  const fallbackClassNames = Array.isArray(raw?.classNames) ? raw.classNames : [];
+function normalizeState(rawYear, rawTeachers, fallbackMembers = [], birthYearKey = "") {
+  const rawClasses = Array.isArray(rawYear?.classes) ? rawYear.classes : [];
+  const fallbackClassNames = Array.isArray(rawYear?.classNames) ? rawYear.classNames : [];
   const classesFromLegacy = fallbackClassNames
     .map((name) => (typeof name === "string" ? name.trim() : ""))
     .filter(Boolean)
@@ -49,8 +53,8 @@ function normalizeState(raw, fallbackMembers = [], birthYearKey = "") {
 
   const classByName = new Map(classes.map((item) => [item.name, item.id]));
   const peopleTree =
-    raw?.people && !Array.isArray(raw.people) && typeof raw.people === "object"
-      ? raw.people
+    rawYear?.people && !Array.isArray(rawYear.people) && typeof rawYear.people === "object"
+      ? rawYear.people
       : null;
   const studentsByYear =
     peopleTree && peopleTree.student && typeof peopleTree.student === "object"
@@ -62,16 +66,22 @@ function normalizeState(raw, fallbackMembers = [], birthYearKey = "") {
     typeof studentsByYear[birthYearKey] === "object"
       ? Object.values(studentsByYear[birthYearKey])
       : [];
-  const teachersBucket =
+  const teachersBucketFromYear =
     peopleTree && peopleTree.teacher && typeof peopleTree.teacher === "object"
       ? Object.values(peopleTree.teacher)
       : [];
+  const teachersBucketFromRoot =
+    rawTeachers && typeof rawTeachers === "object"
+      ? Object.values(rawTeachers)
+      : [];
+  const teachersBucket =
+    teachersBucketFromRoot.length > 0 ? teachersBucketFromRoot : teachersBucketFromYear;
   const rawPeople = peopleTree
     ? [...studentsForScope, ...teachersBucket]
-    : Array.isArray(raw?.people)
-    ? raw.people
-    : Array.isArray(raw?.members)
-    ? raw.members
+    : Array.isArray(rawYear?.people)
+    ? rawYear.people
+    : Array.isArray(rawYear?.members)
+    ? rawYear.members
     : fallbackMembers;
   const people = rawPeople.map((person, idx) => {
     const safeRole = person?.role === "선생님" ? "선생님" : "학생";
@@ -104,7 +114,7 @@ function normalizeState(raw, fallbackMembers = [], birthYearKey = "") {
     };
   });
 
-  if (!raw || typeof raw !== "object") {
+  if (!rawYear || typeof rawYear !== "object") {
     return {
       classes: [],
       people: fallbackMembers.map((member, idx) => ({
@@ -125,35 +135,39 @@ function normalizeState(raw, fallbackMembers = [], birthYearKey = "") {
   return {
     classes,
     people,
-    attendanceByWeek: raw.attendanceByWeek || {},
-    profiles: raw.profiles || {},
+    attendanceByWeek: rawYear.attendanceByWeek || {},
+    profiles: rawYear.profiles || {},
   };
 }
 
-function encodeStateForStorage(state, birthYearKey = "") {
-  const normalized = normalizeState(state, [], birthYearKey);
+function encodeYearStateForStorage(state, birthYearKey = "") {
+  const normalized = normalizeState(state, null, [], birthYearKey);
   const students = {};
-  const teachers = {};
 
   normalized.people.forEach((person) => {
-    if (person.role === "학생") {
-      if (!birthYearKey) return;
-      if (!students[birthYearKey]) students[birthYearKey] = {};
-      students[birthYearKey][person.id] = person;
-      return;
-    }
-    teachers[person.id] = person;
+    if (person.role !== "학생") return;
+    if (!birthYearKey) return;
+    if (!students[birthYearKey]) students[birthYearKey] = {};
+    students[birthYearKey][person.id] = person;
   });
 
   return {
     classes: normalized.classes,
     people: {
       student: students,
-      teacher: teachers,
     },
     attendanceByWeek: normalized.attendanceByWeek,
     profiles: normalized.profiles,
   };
+}
+
+function encodeTeachersForStorage(state) {
+  const teachers = {};
+  (state.people || []).forEach((person) => {
+    if (person.role !== "선생님") return;
+    teachers[person.id] = person;
+  });
+  return teachers;
 }
 
 export function isFirebaseEnabled() {
@@ -161,28 +175,42 @@ export function isFirebaseEnabled() {
 }
 
 export function loadState(fallbackMembers = [], groupUid = "", grade = "1") {
-  const { localKey, birthYear } = getScope(groupUid, grade);
+  const { localKey, teachersLocalKey, birthYear } = getScope(groupUid, grade);
   try {
-    const raw = localStorage.getItem(localKey);
-    if (!raw) return normalizeState(null, fallbackMembers, birthYear);
-    return normalizeState(JSON.parse(raw), fallbackMembers, birthYear);
+    const rawYear = localStorage.getItem(localKey);
+    const rawTeachers = localStorage.getItem(teachersLocalKey);
+    if (!rawYear) return normalizeState(null, rawTeachers ? JSON.parse(rawTeachers) : null, fallbackMembers, birthYear);
+    return normalizeState(
+      JSON.parse(rawYear),
+      rawTeachers ? JSON.parse(rawTeachers) : null,
+      fallbackMembers,
+      birthYear
+    );
   } catch {
-    return normalizeState(null, fallbackMembers, birthYear);
+    return normalizeState(null, null, fallbackMembers, birthYear);
   }
 }
 
 export function saveState(state, groupUid = "", grade = "1") {
-  const { localKey, remotePath, birthYear } = getScope(groupUid, grade);
-  const normalized = normalizeState(state, [], birthYear);
-  const encoded = encodeStateForStorage(normalized, birthYear);
-  localStorage.setItem(localKey, JSON.stringify(encoded));
+  const { localKey, teachersLocalKey, remotePath, teachersPath, birthYear } = getScope(
+    groupUid,
+    grade
+  );
+  const normalized = normalizeState(state, null, [], birthYear);
+  const encodedYear = encodeYearStateForStorage(normalized, birthYear);
+  const encodedTeachers = encodeTeachersForStorage(normalized);
+  localStorage.setItem(localKey, JSON.stringify(encodedYear));
+  localStorage.setItem(teachersLocalKey, JSON.stringify(encodedTeachers));
 
   if (!firebaseEnabled) return Promise.resolve();
 
   remoteWriteChain = remoteWriteChain
     .catch(() => {})
     .then(() =>
-      set(ref(realtimeDb, remotePath), encoded)
+      Promise.all([
+        set(ref(realtimeDb, remotePath), encodedYear),
+        set(ref(realtimeDb, teachersPath), encodedTeachers),
+      ])
     );
 
   return remoteWriteChain.catch((err) => {
@@ -193,15 +221,25 @@ export function saveState(state, groupUid = "", grade = "1") {
 
 export async function ensureRemoteState(seedState, groupUid = "", grade = "1") {
   if (!firebaseEnabled) return;
-  const { remotePath, birthYear } = getScope(groupUid, grade);
-  const rootRef = ref(realtimeDb, remotePath);
-  const snap = await get(rootRef);
-  if (!snap.exists()) {
+  const { remotePath, teachersPath, birthYear } = getScope(groupUid, grade);
+  const yearRef = ref(realtimeDb, remotePath);
+  const teachersRef = ref(realtimeDb, teachersPath);
+  const [yearSnap, teachersSnap] = await Promise.all([get(yearRef), get(teachersRef)]);
+  if (!yearSnap.exists()) {
     try {
-      const normalized = normalizeState(seedState, [], birthYear);
-      await set(rootRef, encodeStateForStorage(normalized, birthYear));
+      const normalized = normalizeState(seedState, null, [], birthYear);
+      await set(yearRef, encodeYearStateForStorage(normalized, birthYear));
     } catch (err) {
       err.remotePath = remotePath;
+      throw err;
+    }
+  }
+  if (!teachersSnap.exists()) {
+    try {
+      const normalized = normalizeState(seedState, null, [], birthYear);
+      await set(teachersRef, encodeTeachersForStorage(normalized));
+    } catch (err) {
+      err.remotePath = teachersPath;
       throw err;
     }
   }
@@ -209,21 +247,50 @@ export async function ensureRemoteState(seedState, groupUid = "", grade = "1") {
 
 export function subscribeRemoteState(groupUid = "", grade = "1", onState, onError) {
   if (!firebaseEnabled) return () => {};
-  const { localKey, remotePath, birthYear } = getScope(groupUid, grade);
-  const rootRef = ref(realtimeDb, remotePath);
-  return onValue(
-    rootRef,
+  const { localKey, teachersLocalKey, remotePath, teachersPath, birthYear } = getScope(
+    groupUid,
+    grade
+  );
+  const yearRef = ref(realtimeDb, remotePath);
+  const teachersRef = ref(realtimeDb, teachersPath);
+  let latestYear = null;
+  let latestTeachers = null;
+
+  const emit = () => {
+    if (!latestYear) return;
+    const next = normalizeState(latestYear, latestTeachers, [], birthYear);
+    localStorage.setItem(localKey, JSON.stringify(encodeYearStateForStorage(next, birthYear)));
+    localStorage.setItem(teachersLocalKey, JSON.stringify(encodeTeachersForStorage(next)));
+    onState(next);
+  };
+
+  const unsubYear = onValue(
+    yearRef,
     (snap) => {
       if (!snap.exists()) return;
-      const next = normalizeState(snap.val(), [], birthYear);
-      const encoded = encodeStateForStorage(next, birthYear);
-      localStorage.setItem(localKey, JSON.stringify(encoded));
-      onState(next);
+      latestYear = snap.val();
+      emit();
     },
     (err) => {
       if (onError) onError(err);
     }
   );
+
+  const unsubTeachers = onValue(
+    teachersRef,
+    (snap) => {
+      latestTeachers = snap.exists() ? snap.val() : {};
+      emit();
+    },
+    (err) => {
+      if (onError) onError(err);
+    }
+  );
+
+  return () => {
+    unsubYear();
+    unsubTeachers();
+  };
 }
 
 export async function uploadMemberPhoto(memberId, file, groupUid = "") {
