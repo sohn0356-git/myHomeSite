@@ -4,8 +4,12 @@ import { firebaseEnabled, realtimeDb } from "../lib/firebase";
 const SESSION_KEY = "classSite.session.v1";
 const INVALID_KEY_CHARS = /[.#$/\[\]]/;
 
-function readAccount(loginId) {
-  const paths = [`classSite/accounts/${loginId}`, `accounts/${loginId}`];
+function readGroupCredential(groupName) {
+  const paths = [
+    `classSite/groupCredentials/${groupName}`,
+    `groupCredentials/${groupName}`,
+    `classSite/groups/${groupName}/credential`,
+  ];
   return paths.reduce(async (prev, path) => {
     const found = await prev;
     if (found) return found;
@@ -15,51 +19,55 @@ function readAccount(loginId) {
   }, Promise.resolve(null));
 }
 
-function toSession(loginId, account) {
+function toSession(groupName, account) {
   const groupUid =
-    account?.groupUid || account?.group_id || account?.groupId || account?.group;
+    account?.groupUid ||
+    account?.group_id ||
+    account?.groupId ||
+    account?.group ||
+    groupName;
   if (typeof groupUid !== "string" || !groupUid.trim()) return null;
 
   return {
-    loginId,
+    groupName,
     groupUid: groupUid.trim(),
     displayName:
       typeof account?.name === "string" && account.name.trim()
         ? account.name.trim()
-        : loginId,
+        : groupName,
   };
 }
 
-export async function loginWithCredentials(loginIdInput, passwordInput) {
+export async function loginWithCredentials(groupNameInput, passwordInput) {
   if (!firebaseEnabled) {
     return { ok: false, error: "Firebase 설정이 필요합니다." };
   }
 
-  const loginId = (loginIdInput || "").trim();
+  const groupName = (groupNameInput || "").trim();
   const password = String(passwordInput || "");
-  if (!loginId || !password) {
-    return { ok: false, error: "아이디와 비밀번호를 입력해 주세요." };
+  if (!groupName || !password) {
+    return { ok: false, error: "그룹명과 그룹 비밀번호를 입력해 주세요." };
   }
-  if (INVALID_KEY_CHARS.test(loginId)) {
-    return { ok: false, error: "아이디에 사용할 수 없는 문자가 포함되어 있습니다." };
+  if (INVALID_KEY_CHARS.test(groupName)) {
+    return { ok: false, error: "그룹명에 사용할 수 없는 문자가 포함되어 있습니다." };
   }
 
   try {
-    const account = await readAccount(loginId);
+    const account = await readGroupCredential(groupName);
     if (!account || typeof account !== "object") {
-      return { ok: false, error: "존재하지 않는 계정입니다." };
+      return { ok: false, error: "존재하지 않는 그룹입니다." };
     }
 
     const savedPassword = String(
       account.password ?? account.pass ?? account.pw ?? ""
     );
     if (savedPassword !== password) {
-      return { ok: false, error: "비밀번호가 일치하지 않습니다." };
+      return { ok: false, error: "그룹 비밀번호가 일치하지 않습니다." };
     }
 
-    const session = toSession(loginId, account);
+    const session = toSession(groupName, account);
     if (!session) {
-      return { ok: false, error: "계정에 group uid가 없습니다." };
+      return { ok: false, error: "그룹 정보에 group uid가 없습니다." };
     }
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -74,7 +82,7 @@ export function loadSession() {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed?.groupUid || !parsed?.loginId) return null;
+    if (!parsed?.groupUid || !parsed?.groupName) return null;
     return parsed;
   } catch {
     return null;

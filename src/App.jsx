@@ -320,8 +320,8 @@ export default function App() {
     setSelectedGrade(nextGrade);
   };
 
-  const onLogin = async (loginId, password) => {
-    const result = await loginWithCredentials(loginId, password);
+  const onLogin = async (groupName, password) => {
+    const result = await loginWithCredentials(groupName, password);
     if (!result.ok) return result;
     setSession(result.session);
     setActiveTab("attendance");
@@ -349,7 +349,7 @@ export default function App() {
         <TopBar
           title={appTitle}
           subtitle="출석 / 연간 / 구성원 관리"
-          groupLabel={session.groupUid}
+          groupLabel={session.groupName}
           onLogout={onLogout}
           activeTab={activeTab}
           onChangeTab={(tab) => {

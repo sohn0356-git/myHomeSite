@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 export default function LoginPage({ onLogin, firebaseReady }) {
-  const [loginId, setLoginId] = useState("");
+  const [groupName, setGroupName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -10,7 +10,7 @@ export default function LoginPage({ onLogin, firebaseReady }) {
     event.preventDefault();
     setIsSubmitting(true);
     setError("");
-    const result = await onLogin(loginId, password);
+    const result = await onLogin(groupName, password);
     if (!result?.ok) {
       setError(result?.error || "로그인에 실패했습니다.");
     }
@@ -23,7 +23,7 @@ export default function LoginPage({ onLogin, firebaseReady }) {
         <section className="heroCard loginCard">
           <div className="panelTitle">출석부 로그인</div>
           <div className="panelDesc">
-            계정에 연결된 그룹 데이터만 조회할 수 있습니다.
+            그룹명과 그룹 비밀번호로 로그인합니다.
           </div>
           {!firebaseReady ? (
             <div className="hintSmall">Firebase 설정이 필요합니다.</div>
@@ -31,24 +31,24 @@ export default function LoginPage({ onLogin, firebaseReady }) {
 
           <form className="formGrid" onSubmit={submit}>
             <label className="field fieldFull">
-              <div className="fieldLabel">아이디</div>
+              <div className="fieldLabel">그룹명</div>
               <input
                 className="fieldInput"
-                value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
-                placeholder="아이디"
-                autoComplete="username"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="그룹명"
+                autoComplete="organization"
               />
             </label>
 
             <label className="field fieldFull">
-              <div className="fieldLabel">비밀번호</div>
+              <div className="fieldLabel">그룹 비밀번호</div>
               <input
                 type="password"
                 className="fieldInput"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호"
+                placeholder="그룹 비밀번호"
                 autoComplete="current-password"
               />
             </label>
