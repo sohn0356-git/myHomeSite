@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -41,7 +41,32 @@ function isMonthStart(sundays, idx) {
   return sundays[idx - 1].getMonth() !== sundays[idx].getMonth();
 }
 
-export default function AnnualPage({ year, members, attendanceByWeek }) {
+function GradePicker({ grade, onChange }) {
+  return (
+    <div className="gradePicker" role="tablist" aria-label="grade picker">
+      {["1", "2", "3"].map((value) => (
+        <button
+          key={value}
+          type="button"
+          className={`gradeBtn ${grade === value ? "gradeBtnActive" : ""}`}
+          onClick={() => onChange(value)}
+        >
+          {value}학년
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function AnnualPage({
+  year,
+  grade,
+  onChangeGrade,
+  classes,
+  members,
+  attendanceByWeek,
+}) {
+  const [classFilter, setClassFilter] = useState("all");
   const sundays = useMemo(() => getAllSundaysOfYear(year), [year]);
   const latestSunday = useMemo(() => getLatestSundayOfYear(year), [year]);
   const latestIndex = useMemo(
@@ -52,27 +77,43 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
     [latestSunday, sundays]
   );
   const totalWeeksUntilLatest = latestIndex >= 0 ? latestIndex + 1 : 0;
+  const classNameById = useMemo(
+    () =>
+      classes.reduce((acc, item) => {
+        acc[item.id] = item.name;
+        return acc;
+      }, {}),
+    [classes]
+  );
+  const classOptions = useMemo(
+    () => Array.from(new Set(members.map((m) => m.className).filter(Boolean))),
+    [members]
+  );
+  const visibleMembers =
+    classFilter === "all"
+      ? members
+      : members.filter((m) => (m.className || "") === classFilter);
 
   const matrix = useMemo(() => {
     const map = {};
-    for (const m of members) map[m.id] = [];
+    for (const m of visibleMembers) map[m.id] = [];
 
     sundays.forEach((date) => {
       const key = `attendance-${toYMD(date)}`;
       const weekData = attendanceByWeek?.[key] || {};
 
-      members.forEach((m) => {
+      visibleMembers.forEach((m) => {
         const has = Object.prototype.hasOwnProperty.call(weekData, m.id);
         map[m.id].push(has ? !!weekData[m.id] : null);
       });
     });
 
     return map;
-  }, [attendanceByWeek, members, sundays]);
+  }, [attendanceByWeek, visibleMembers, sundays]);
 
   const summary = useMemo(() => {
     const perMember = {};
-    members.forEach((m) => {
+    visibleMembers.forEach((m) => {
       let present = 0;
 
       (matrix[m.id] || []).forEach((v, idx) => {
@@ -90,22 +131,33 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
       };
     });
     return perMember;
-  }, [latestIndex, matrix, members, totalWeeksUntilLatest]);
+  }, [latestIndex, matrix, visibleMembers, totalWeeksUntilLatest]);
 
   return (
     <>
       <div className="heroCard">
+        <GradePicker grade={grade} onChange={onChangeGrade} />
         <div className="panelTitle">연간 출석</div>
-        <div className="panelDesc">
-          출석은 <b>O</b>, 결석은 <b>X</b>, 미기록은 <b>·</b>로 표시됩니다.
-        </div>
         <div className="miniSummary">
           <span>주차 {sundays.length}</span>
-          <span>인원 {members.length}명</span>
-          <span>
-            출석률 기준: 최신 주차까지 {totalWeeksUntilLatest}주
-          </span>
+          <span>조회 {visibleMembers.length}명</span>
+          <span>기준 주차 {totalWeeksUntilLatest}주</span>
         </div>
+        <label className="field">
+          <div className="fieldLabel">반 선택</div>
+          <select
+            className="fieldInput"
+            value={classFilter}
+            onChange={(e) => setClassFilter(e.target.value)}
+          >
+            <option value="all">전체</option>
+            {classOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <section className="section">
@@ -142,7 +194,7 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
             </thead>
 
             <tbody>
-              {members.map((m) => {
+              {visibleMembers.map((m) => {
                 const row = matrix[m.id] || [];
                 const s = summary[m.id];
 
@@ -151,6 +203,9 @@ export default function AnnualPage({ year, members, attendanceByWeek }) {
                     <td className="stickyCol nameCell">
                       <div className="nameCellInner">
                         <span className="nameText">{m.name}</span>
+                        <span className="personRole">
+                          {classNameById[m.classId] || "반 미지정"}
+                        </span>
                       </div>
                     </td>
 

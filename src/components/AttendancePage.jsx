@@ -8,8 +8,26 @@ function Avatar({ memberId, fallback, photoUrl }) {
   return <div className="avatarFallback">{fallback}</div>;
 }
 
+function GradePicker({ grade, onChange }) {
+  return (
+    <div className="gradePicker" role="tablist" aria-label="grade picker">
+      {["1", "2", "3"].map((value) => (
+        <button
+          key={value}
+          type="button"
+          className={`gradeBtn ${grade === value ? "gradeBtnActive" : ""}`}
+          onClick={() => onChange(value)}
+        >
+          {value}학년
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AttendancePage({
   grade,
+  onChangeGrade,
   sunday,
   onPrevWeek,
   onNextWeek,
@@ -46,6 +64,8 @@ export default function AttendancePage({
   return (
     <>
       <div className="heroCard">
+        <GradePicker grade={grade} onChange={onChangeGrade} />
+
         <div className="weekBar">
           <button type="button" onClick={onPrevWeek} className="secondary">
             이전 주
@@ -61,7 +81,6 @@ export default function AttendancePage({
         </div>
 
         <div className="miniSummary">
-          <span>{grade}학년</span>
           <span>반 필터: {classFilter === "all" ? "전체" : `${classFilter}반`}</span>
           <span>출석 {present}명</span>
           <span>결석 {absent}명</span>

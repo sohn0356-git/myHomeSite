@@ -180,9 +180,7 @@ export function saveState(state, grade = "1") {
   remoteWriteChain = remoteWriteChain
     .catch(() => {})
     .then(() =>
-      set(ref(realtimeDb, remotePath), encoded).then(() => {
-        console.info("[Firebase write] success:", remotePath, new Date().toISOString());
-      })
+      set(ref(realtimeDb, remotePath), encoded)
     );
 
   return remoteWriteChain.catch((err) => {

@@ -43,13 +43,6 @@ function createStudentId(birthYear) {
   return `s_${birthYear}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function formatFirebaseError(err, fallbackMessage) {
-  const code = typeof err?.code === "string" ? err.code : "";
-  const message = err?.message || fallbackMessage;
-  const path = err?.remotePath ? ` (path: ${err.remotePath})` : "";
-  return `${code ? `${code} - ` : ""}${message}${path}`;
-}
-
 export default function App() {
   const [activeTab, setActiveTab] = useState("attendance");
   const [sunday, setSunday] = useState(getSunday());
@@ -58,8 +51,6 @@ export default function App() {
   const [syncMode, setSyncMode] = useState(
     isFirebaseEnabled() ? "firebase" : "local"
   );
-  const [lastWriteResult, setLastWriteResult] = useState(null);
-  const [syncError, setSyncError] = useState("");
 
   const { classes, people, attendanceByWeek, profiles } = state;
   const classNameById = useMemo(
@@ -111,15 +102,11 @@ export default function App() {
             setState(remoteState);
           },
           (err) => {
-            console.error("Firebase subscribe failed:", err);
-            setSyncError(formatFirebaseError(err, "구독 실패"));
             setSyncMode("local");
           }
         );
         setSyncMode("firebase");
       } catch (err) {
-        console.error("Firebase sync setup failed:", err);
-        setSyncError(formatFirebaseError(err, "초기화 실패"));
         setSyncMode("local");
       }
     };
@@ -135,25 +122,7 @@ export default function App() {
   const persist = (next) => {
     setState(next);
     saveState(next, selectedGrade)
-      .then(() => {
-        setSyncError("");
-        setLastWriteResult({
-          ok: true,
-          mode: isFirebaseEnabled() ? "firebase" : "local",
-          at: new Date().toISOString(),
-          error: "",
-        });
-      })
-      .catch((err) => {
-        console.error("State sync failed:", err);
-        setSyncError(formatFirebaseError(err, "저장 실패"));
-        setLastWriteResult({
-          ok: false,
-          mode: isFirebaseEnabled() ? "firebase" : "local",
-          at: new Date().toISOString(),
-          error: err?.message || "알 수 없는 오류",
-        });
-      });
+      .catch(() => {});
   };
 
   const setAttendanceForWeek = (nextMap) => {
@@ -351,9 +320,6 @@ export default function App() {
     setDetailMemberId(null);
     setSelectedGrade(nextGrade);
   };
-  const writeAtText = lastWriteResult?.at
-    ? new Date(lastWriteResult.at).toLocaleString("ko-KR")
-    : "";
 
   return (
     <div className="page">
@@ -371,6 +337,7 @@ export default function App() {
         {activeTab === "attendance" && (
           <AttendancePage
             grade={selectedGrade}
+            onChangeGrade={onChangeGrade}
             sunday={sunday}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
@@ -385,6 +352,9 @@ export default function App() {
         {activeTab === "annual" && (
           <AnnualPage
             year={year}
+            grade={selectedGrade}
+            onChangeGrade={onChangeGrade}
+            classes={classes}
             members={members}
             attendanceByWeek={attendanceByWeek}
           />
@@ -422,24 +392,8 @@ export default function App() {
         <div className="footerHint">
           동기화: {syncMode === "firebase" ? "Firebase Realtime DB" : "로컬 저장"}
           {!isFirebaseEnabled() && missingFirebaseKeys.length
-            ? ` · Firebase 설정 누락: ${missingFirebaseKeys.join(", ")}`
+            ? " · Firebase 설정 필요"
             : ""}
-          {" · "}
-          저장 경로:{" "}
-          {birthYearKey
-            ? `classSite/byBirthYear/${birthYearKey}/people/student/${birthYearKey}`
-            : "미지정"}
-          {lastWriteResult ? (
-            <>
-              {" · "}
-              최근 write:{" "}
-              {lastWriteResult.ok ? "성공" : "실패"} ({writeAtText})
-              {!lastWriteResult.ok && lastWriteResult.error
-                ? ` - ${lastWriteResult.error}`
-                : ""}
-            </>
-          ) : null}
-          {syncError ? ` · 동기화 오류: ${syncError}` : ""}
         </div>
       </div>
     </div>

@@ -243,7 +243,8 @@ export default function StudentsPage({
       </section>
 
       <section className="heroCard">
-        <div className="panelTitle">반 배정 (Drag & Drop)</div>
+        <div className="panelTitle">반 배정 보드</div>
+        <div className="panelDesc">구성원 카드를 원하는 반 칸으로 옮겨 배정할 수 있습니다.</div>
         <div className="dndBoard">
           <div
             className="dndColumn"
