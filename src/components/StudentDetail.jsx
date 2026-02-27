@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { avatarMap } from "../data/avatarMap";
+import { getPatternAvatarDataUrl } from "../utils/avatarPattern";
 
 export default function StudentDetail({
   member,
   profile,
   onChangeProfile,
   onUploadPhoto,
-  onRemovePhoto,
   firebaseEnabled,
   onClose,
 }) {
@@ -15,7 +15,10 @@ export default function StudentDetail({
 
   const safeProfile = profile || {};
   const avatar =
-    safeProfile.photoUrl || safeProfile.photoDataUrl || avatarMap[member.id];
+    safeProfile.photoUrl ||
+    safeProfile.photoDataUrl ||
+    avatarMap[member.id] ||
+    getPatternAvatarDataUrl(member.id, member.role);
 
   const update = (patch) => {
     onChangeProfile(member.id, { ...safeProfile, ...patch });
@@ -47,23 +50,21 @@ export default function StudentDetail({
     }
   };
 
-  const handleRemovePhoto = async () => {
-    setError("");
-    try {
-      await onRemovePhoto(member.id);
-    } catch (err) {
-      setError("사진 삭제에 실패했습니다.");
-    }
-  };
-
   return (
     <div className="modalOverlay" role="dialog" aria-modal="true">
       <div className="modalCard">
         <div className="modalTop">
           <div>
-            <div className="modalTitle">
+            <label className="modalTitle uploadByName">
               {member.role} · {member.name}
-            </div>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                disabled={isUploading}
+                onChange={handleUpload}
+              />
+            </label>
             <div className="modalSub">프로필 / 인적사항</div>
           </div>
           <button type="button" className="secondary" onClick={onClose}>
@@ -92,17 +93,6 @@ export default function StudentDetail({
                   onChange={handleUpload}
                 />
               </label>
-              <button
-                type="button"
-                className="secondary"
-                disabled={isUploading || (!safeProfile.photoUrl && !safeProfile.photoDataUrl)}
-                onClick={handleRemovePhoto}
-              >
-                사진 삭제
-              </button>
-            </div>
-            <div className="hintSmall">
-              Firebase Storage에 학생 사진을 저장하고 Realtime Database에 URL을 기록합니다.
             </div>
             {error ? <div className="hintSmall">{error}</div> : null}
           </div>

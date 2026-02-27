@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { avatarMap } from "../data/avatarMap";
+import { getPatternAvatarDataUrl } from "../utils/avatarPattern";
 
-function Avatar({ photoUrl, fallback }) {
-  if (photoUrl) return <img className="avatarImg" src={photoUrl} alt="" />;
-  return <div className="avatarFallback">{fallback}</div>;
+function Avatar({ member, photoUrl }) {
+  const src =
+    photoUrl || avatarMap[member.id] || getPatternAvatarDataUrl(member.id, member.role);
+  if (src) return <img className="avatarImg" src={src} alt="" />;
+  return <div className="avatarFallback">{member.name.slice(0, 1)}</div>;
 }
 
 function GradePicker({ grade, onChange }) {
@@ -52,9 +56,6 @@ export default function StudentsPage({
     [classes]
   );
 
-  const teachers = members.filter((m) => m.role === "선생님");
-  const students = members.filter((m) => m.role === "학생");
-
   useEffect(() => {
     if (!memberClassId) return;
     if (classes.some((item) => item.id === memberClassId)) return;
@@ -91,60 +92,50 @@ export default function StudentsPage({
     setDragMemberId("");
   };
 
-  const renderGroup = (title, list) => (
-    <section className="section">
-      <div className="sectionHeader">
-        <h2 className="sectionTitle">{title}</h2>
-        <div className="sectionCount">{list.length}명</div>
-      </div>
-
-      <div className="gridCard">
-        {list.map((m) => {
-          const profile = profiles[m.id] || {};
-          const photoUrl = profile.photoUrl || profile.photoDataUrl;
-          const className = classNameById[m.classId] || "";
-
-          return (
-            <div key={m.id} className="personCardWrap">
-              <button
-                type="button"
-                className={`personCard ${
-                  m.role === "선생님" ? "personTeacher" : "personStudent"
-                }`}
-                draggable
-                onDragStart={() => setDragMemberId(m.id)}
-                onClick={() => onOpenDetail(m.id)}
-              >
-                <span className="personShape personShapeA" aria-hidden="true" />
-                <span className="personShape personShapeB" aria-hidden="true" />
-                <div className="personAvatar">
-                  <Avatar photoUrl={photoUrl} fallback={m.name.slice(0, 1)} />
-                </div>
-                <div className="personMeta">
-                  <div className="personName">{m.name}</div>
-                  <div className="personRole">
-                    {m.role}
-                    {className ? ` · ${className}` : " · 반 미지정"}
-                  </div>
-                  <div className="personHint">
-                    {profile.note || "메모를 입력해 주세요"}
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="memberRemove"
-                onClick={() => onRemoveMember(m.id)}
-              >
-                제거
-              </button>
+  const renderMemberCard = (member) => {
+    const profile = profiles[member.id] || {};
+    const photoUrl = profile.photoUrl || profile.photoDataUrl;
+    const className = classNameById[member.classId] || "";
+    return (
+      <div key={member.id} className="boardCardWrap">
+        <button
+          type="button"
+          className={`personCard boardPersonCard ${
+            member.role === "선생님" ? "personTeacher" : "personStudent"
+          }`}
+          draggable
+          onDragStart={() => setDragMemberId(member.id)}
+          onClick={() => onOpenDetail(member.id)}
+        >
+          <span className="personShape personShapeA" aria-hidden="true" />
+          <span className="personShape personShapeB" aria-hidden="true" />
+          {member.role === "선생님" ? (
+            <span className="teacherMark" aria-hidden="true">
+              ★
+            </span>
+          ) : null}
+          <div className="personAvatar">
+            <Avatar member={member} photoUrl={photoUrl} />
+          </div>
+          <div className="personMeta">
+            <div className="personName">{member.name}</div>
+            <div className="personRole">
+              {member.role}
+              {className ? ` · ${className}` : " · 반 미지정"}
             </div>
-          );
-        })}
+            <div className="personHint">{profile.note || "메모를 입력해 주세요"}</div>
+          </div>
+        </button>
+        <button
+          type="button"
+          className="memberRemove"
+          onClick={() => onRemoveMember(member.id)}
+        >
+          제거
+        </button>
       </div>
-    </section>
-  );
+    );
+  };
 
   return (
     <>
@@ -242,7 +233,6 @@ export default function StudentsPage({
 
       <section className="heroCard">
         <div className="panelTitle">반 배정 보드</div>
-        <div className="panelDesc">구성원 카드를 원하는 반 칸으로 옮겨 배정할 수 있습니다.</div>
         <div className="dndBoard">
           <div
             className="dndColumn"
@@ -251,13 +241,7 @@ export default function StudentsPage({
           >
             <div className="dndTitle">반 미지정</div>
             <div className="dndList">
-              {members
-                .filter((m) => !m.classId)
-                .map((m) => (
-                  <div key={m.id} className="dndItem">
-                    {m.name}
-                  </div>
-                ))}
+              {members.filter((m) => !m.classId).map(renderMemberCard)}
             </div>
           </div>
 
@@ -270,21 +254,12 @@ export default function StudentsPage({
             >
               <div className="dndTitle">{item.name}</div>
               <div className="dndList">
-                {members
-                  .filter((m) => m.classId === item.id)
-                  .map((m) => (
-                    <div key={m.id} className="dndItem">
-                      {m.name}
-                    </div>
-                  ))}
+                {members.filter((m) => m.classId === item.id).map(renderMemberCard)}
               </div>
             </div>
           ))}
         </div>
       </section>
-
-      {renderGroup("선생님", teachers)}
-      {renderGroup("학생", students)}
     </>
   );
 }

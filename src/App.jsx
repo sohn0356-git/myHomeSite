@@ -329,22 +329,6 @@ export default function App() {
     return result.url;
   };
 
-  const onRemovePhoto = async (memberId) => {
-    const prevPath = profiles[memberId]?.photoPath;
-    if (prevPath) {
-      try {
-        await deleteMemberPhotoByPath(prevPath);
-      } catch {}
-    }
-
-    const prev = profiles[memberId] || {};
-    const nextProfile = { ...prev };
-    delete nextProfile.photoPath;
-    delete nextProfile.photoUrl;
-    delete nextProfile.photoDataUrl;
-    onChangeProfile(memberId, nextProfile);
-  };
-
   const onChangeGrade = (nextGrade) => {
     setDetailMemberId(null);
     setSelectedGrade(nextGrade);
@@ -419,7 +403,6 @@ export default function App() {
             classes={classes}
             members={members}
             profiles={profiles}
-            birthYearKey={birthYearKey}
             onChangeGrade={onChangeGrade}
             onCreateClass={onCreateClass}
             onRemoveClass={onRemoveClass}
@@ -436,7 +419,6 @@ export default function App() {
             profile={profiles[detailMember.id]}
             onChangeProfile={onChangeProfile}
             onUploadPhoto={onUploadPhoto}
-            onRemovePhoto={onRemovePhoto}
             firebaseEnabled={isFirebaseEnabled()}
             onClose={() => setDetailMemberId(null)}
           />

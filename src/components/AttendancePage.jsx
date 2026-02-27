@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatKoreanSunday } from "../utils/date";
 import { avatarMap } from "../data/avatarMap";
+import { getPatternAvatarDataUrl } from "../utils/avatarPattern";
 
 function Avatar({ memberId, fallback, photoUrl }) {
-  const src = photoUrl || avatarMap[memberId];
+  const src = photoUrl || avatarMap[memberId] || getPatternAvatarDataUrl(memberId);
   if (src) return <img className="avatarImg" src={src} alt="" />;
   return <div className="avatarFallback">{fallback}</div>;
 }
