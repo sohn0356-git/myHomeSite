@@ -41,6 +41,15 @@ body {
   gap: 14px;
 }
 
+.loginContainer {
+  max-width: 520px;
+  margin-top: 8vh;
+}
+
+.loginCard {
+  padding: 20px;
+}
+
 .topBar {
   position: sticky;
   top: 10px;
@@ -72,6 +81,10 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.topActionBtn {
+  min-width: 88px;
 }
 
 .brandDot {

@@ -41,7 +41,6 @@ export default function StudentDetail({
       setIsUploading(true);
       await onUploadPhoto(member.id, file);
     } catch (err) {
-      console.error(err);
       setError("사진 업로드에 실패했습니다.");
     } finally {
       setIsUploading(false);
@@ -53,7 +52,6 @@ export default function StudentDetail({
     try {
       await onRemovePhoto(member.id);
     } catch (err) {
-      console.error(err);
       setError("사진 삭제에 실패했습니다.");
     }
   };

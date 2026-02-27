@@ -7,9 +7,11 @@ import AttendancePage from "./components/AttendancePage";
 import AnnualPage from "./components/AnnualPage";
 import StudentsPage from "./components/StudentsPage";
 import StudentDetail from "./components/StudentDetail";
+import LoginPage from "./components/LoginPage";
 
 import { seedMembers } from "./data/seedMembers";
 import { addDays, getSunday, weekKey } from "./utils/date";
+import { clearSession, loadSession, loginWithCredentials } from "./utils/auth";
 import {
   deleteMemberPhotoByPath,
   ensureRemoteState,
@@ -44,10 +46,13 @@ function createStudentId(birthYear) {
 }
 
 export default function App() {
+  const [session, setSession] = useState(() => loadSession());
+  const groupUid = session?.groupUid || "";
+
   const [activeTab, setActiveTab] = useState("attendance");
   const [sunday, setSunday] = useState(getSunday());
   const [selectedGrade, setSelectedGrade] = useState("1");
-  const [state, setState] = useState(() => loadState(seedMembers, "1"));
+  const [state, setState] = useState(buildInitialState);
   const [syncMode, setSyncMode] = useState(
     isFirebaseEnabled() ? "firebase" : "local"
   );
@@ -80,7 +85,13 @@ export default function App() {
   const detailMember = members.find((m) => m.id === detailMemberId) || null;
 
   useEffect(() => {
-    setState(loadState(seedMembers, selectedGrade));
+    if (!session) {
+      setState(buildInitialState());
+      setSyncMode(isFirebaseEnabled() ? "firebase" : "local");
+      return () => {};
+    }
+
+    setState(loadState(seedMembers, groupUid, selectedGrade));
 
     if (!isFirebaseEnabled()) {
       setSyncMode("local");
@@ -92,21 +103,21 @@ export default function App() {
 
     const startSync = async () => {
       try {
-        setSyncError("");
-        await ensureRemoteState(buildInitialState(), selectedGrade);
+        await ensureRemoteState(buildInitialState(), groupUid, selectedGrade);
         if (detached) return;
 
         unsubscribe = subscribeRemoteState(
+          groupUid,
           selectedGrade,
           (remoteState) => {
             setState(remoteState);
           },
-          (err) => {
+          () => {
             setSyncMode("local");
           }
         );
         setSyncMode("firebase");
-      } catch (err) {
+      } catch {
         setSyncMode("local");
       }
     };
@@ -117,12 +128,12 @@ export default function App() {
       detached = true;
       unsubscribe();
     };
-  }, [selectedGrade]);
+  }, [groupUid, selectedGrade, session]);
 
   const persist = (next) => {
     setState(next);
-    saveState(next, selectedGrade)
-      .catch(() => {});
+    if (!session) return;
+    saveState(next, groupUid, selectedGrade).catch(() => {});
   };
 
   const setAttendanceForWeek = (nextMap) => {
@@ -144,7 +155,9 @@ export default function App() {
 
   const onMarkAll = (value, memberIds) => {
     const next = { ...attendanceMap };
-    const targetIds = Array.isArray(memberIds) ? memberIds : members.map((m) => m.id);
+    const targetIds = Array.isArray(memberIds)
+      ? memberIds
+      : members.map((m) => m.id);
     targetIds.forEach((id) => {
       next[id] = value;
     });
@@ -191,35 +204,31 @@ export default function App() {
 
   const onAddMember = ({ name, role, classId }) => {
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      return { ok: false, error: "이름을 입력해 주세요." };
-    }
+    if (!trimmedName) return { ok: false, error: "이름을 입력해 주세요." };
 
     let personId = createPersonId(role);
     let personBirthYear = "";
 
     if (role === "학생") {
       if (!birthYearKey) {
-        return {
-          ok: false,
-          error: "학년 기준 출생연도 key를 계산할 수 없습니다.",
-        };
+        return { ok: false, error: "학년 기준 출생연도를 계산할 수 없습니다." };
       }
       personId = createStudentId(birthYearKey);
       personBirthYear = birthYearKey;
     }
 
-    const nextMember = {
-      id: personId,
-      name: trimmedName,
-      role,
-      classId: classId || "",
-      birthYear: personBirthYear,
-    };
-
     persist({
       ...state,
-      people: [...people, nextMember],
+      people: [
+        ...people,
+        {
+          id: personId,
+          name: trimmedName,
+          role,
+          classId: classId || "",
+          birthYear: personBirthYear,
+        },
+      ],
     });
     return { ok: true };
   };
@@ -254,9 +263,7 @@ export default function App() {
       nextAttendanceByWeek[week] = nextWeekMap;
     });
 
-    if (detailMemberId === memberId) {
-      setDetailMemberId(null);
-    }
+    if (detailMemberId === memberId) setDetailMemberId(null);
 
     persist({
       ...state,
@@ -268,22 +275,18 @@ export default function App() {
     if (removedProfile?.photoPath) {
       try {
         await deleteMemberPhotoByPath(removedProfile.photoPath);
-      } catch (err) {
-        console.warn("Failed to delete photo file:", err);
-      }
+      } catch {}
     }
   };
 
   const onUploadPhoto = async (memberId, file) => {
-    const result = await uploadMemberPhoto(memberId, file);
+    const result = await uploadMemberPhoto(memberId, file, groupUid);
     const prevPath = profiles[memberId]?.photoPath;
 
     if (prevPath && prevPath !== result.path) {
       try {
         await deleteMemberPhotoByPath(prevPath);
-      } catch (err) {
-        console.warn("Failed to delete old photo file:", err);
-      }
+      } catch {}
     }
 
     const nextProfile = {
@@ -301,9 +304,7 @@ export default function App() {
     if (prevPath) {
       try {
         await deleteMemberPhotoByPath(prevPath);
-      } catch (err) {
-        console.warn("Failed to delete photo file:", err);
-      }
+      } catch {}
     }
 
     const prev = profiles[memberId] || {};
@@ -314,12 +315,33 @@ export default function App() {
     onChangeProfile(memberId, nextProfile);
   };
 
-  const year = sunday.getFullYear();
-  const appTitle = `${selectedGrade}학년 출석부`;
   const onChangeGrade = (nextGrade) => {
     setDetailMemberId(null);
     setSelectedGrade(nextGrade);
   };
+
+  const onLogin = async (loginId, password) => {
+    const result = await loginWithCredentials(loginId, password);
+    if (!result.ok) return result;
+    setSession(result.session);
+    setActiveTab("attendance");
+    setSunday(getSunday());
+    setSelectedGrade("1");
+    return result;
+  };
+
+  const onLogout = () => {
+    clearSession();
+    setSession(null);
+    setDetailMemberId(null);
+  };
+
+  if (!session) {
+    return <LoginPage onLogin={onLogin} firebaseReady={isFirebaseEnabled()} />;
+  }
+
+  const year = sunday.getFullYear();
+  const appTitle = `${selectedGrade}학년 출석부`;
 
   return (
     <div className="page">
@@ -327,6 +349,8 @@ export default function App() {
         <TopBar
           title={appTitle}
           subtitle="출석 / 연간 / 구성원 관리"
+          groupLabel={session.groupUid}
+          onLogout={onLogout}
           activeTab={activeTab}
           onChangeTab={(tab) => {
             setActiveTab(tab);

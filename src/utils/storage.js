@@ -8,7 +8,7 @@ import {
 import { firebaseEnabled, realtimeDb, storageBucket } from "../lib/firebase";
 
 const LOCAL_KEY_BASE = "classSite.v5";
-const ROOT_PATH = "classSite/byBirthYear";
+const ROOT_PATH = "classSite/groups";
 let remoteWriteChain = Promise.resolve();
 
 export function gradeToBirthYear(grade, today = new Date()) {
@@ -17,11 +17,13 @@ export function gradeToBirthYear(grade, today = new Date()) {
   return String(today.getFullYear() - (gradeNum + 15));
 }
 
-function getScope(grade) {
+function getScope(groupUid, grade) {
   const birthYear = gradeToBirthYear(grade);
+  const safeGroupUid = typeof groupUid === "string" && groupUid.trim() ? groupUid.trim() : "unknown";
   return {
-    localKey: `${LOCAL_KEY_BASE}.${birthYear || "unknown"}`,
-    remotePath: `${ROOT_PATH}/${birthYear || "unknown"}`,
+    localKey: `${LOCAL_KEY_BASE}.${safeGroupUid}.${birthYear || "unknown"}`,
+    remotePath: `${ROOT_PATH}/${safeGroupUid}/byBirthYear/${birthYear || "unknown"}`,
+    groupUid: safeGroupUid,
     birthYear,
   };
 }
@@ -158,8 +160,8 @@ export function isFirebaseEnabled() {
   return firebaseEnabled;
 }
 
-export function loadState(fallbackMembers = [], grade = "1") {
-  const { localKey, birthYear } = getScope(grade);
+export function loadState(fallbackMembers = [], groupUid = "", grade = "1") {
+  const { localKey, birthYear } = getScope(groupUid, grade);
   try {
     const raw = localStorage.getItem(localKey);
     if (!raw) return normalizeState(null, fallbackMembers, birthYear);
@@ -169,8 +171,8 @@ export function loadState(fallbackMembers = [], grade = "1") {
   }
 }
 
-export function saveState(state, grade = "1") {
-  const { localKey, remotePath, birthYear } = getScope(grade);
+export function saveState(state, groupUid = "", grade = "1") {
+  const { localKey, remotePath, birthYear } = getScope(groupUid, grade);
   const normalized = normalizeState(state, [], birthYear);
   const encoded = encodeStateForStorage(normalized, birthYear);
   localStorage.setItem(localKey, JSON.stringify(encoded));
@@ -184,15 +186,14 @@ export function saveState(state, grade = "1") {
     );
 
   return remoteWriteChain.catch((err) => {
-    console.error("Failed to sync state to Firebase Realtime Database:", err);
     err.remotePath = remotePath;
     throw err;
   });
 }
 
-export async function ensureRemoteState(seedState, grade = "1") {
+export async function ensureRemoteState(seedState, groupUid = "", grade = "1") {
   if (!firebaseEnabled) return;
-  const { remotePath, birthYear } = getScope(grade);
+  const { remotePath, birthYear } = getScope(groupUid, grade);
   const rootRef = ref(realtimeDb, remotePath);
   const snap = await get(rootRef);
   if (!snap.exists()) {
@@ -206,9 +207,9 @@ export async function ensureRemoteState(seedState, grade = "1") {
   }
 }
 
-export function subscribeRemoteState(grade = "1", onState, onError) {
+export function subscribeRemoteState(groupUid = "", grade = "1", onState, onError) {
   if (!firebaseEnabled) return () => {};
-  const { localKey, remotePath, birthYear } = getScope(grade);
+  const { localKey, remotePath, birthYear } = getScope(groupUid, grade);
   const rootRef = ref(realtimeDb, remotePath);
   return onValue(
     rootRef,
@@ -225,13 +226,14 @@ export function subscribeRemoteState(grade = "1", onState, onError) {
   );
 }
 
-export async function uploadMemberPhoto(memberId, file) {
+export async function uploadMemberPhoto(memberId, file, groupUid = "") {
   if (!firebaseEnabled) {
     throw new Error("Firebase is not configured.");
   }
 
   const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
-  const path = `students/${memberId}.${ext}`;
+  const safeGroupUid = typeof groupUid === "string" && groupUid.trim() ? groupUid.trim() : "unknown";
+  const path = `groups/${safeGroupUid}/students/${memberId}.${ext}`;
   const fileRef = storageRef(storageBucket, path);
   await uploadBytes(fileRef, file, {
     contentType: file.type || "image/jpeg",
