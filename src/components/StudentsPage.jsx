@@ -1,34 +1,62 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 function Avatar({ photoUrl, fallback }) {
   if (photoUrl) return <img className="avatarImg" src={photoUrl} alt="" />;
   return <div className="avatarFallback">{fallback}</div>;
 }
 
+function parseClassNames(text) {
+  return text
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 export default function StudentsPage({
-  className,
+  grade,
+  classNames,
   members,
   profiles,
-  onSetClassName,
+  onSetClassConfig,
   onAddMember,
   onRemoveMember,
   onOpenDetail,
 }) {
-  const [nextClassName, setNextClassName] = useState(className || "");
+  const [nextGrade, setNextGrade] = useState(grade || "");
+  const [classNamesInput, setClassNamesInput] = useState(
+    (classNames || []).join(", ")
+  );
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState("학생");
+  const [memberClassName, setMemberClassName] = useState(classNames?.[0] || "");
 
   const teachers = members.filter((m) => m.role === "선생님");
   const students = members.filter((m) => m.role === "학생");
+  const classOptions = useMemo(
+    () => parseClassNames(classNamesInput),
+    [classNamesInput]
+  );
 
-  const saveClassName = () => {
-    onSetClassName(nextClassName.trim());
+  const saveClassConfig = () => {
+    const parsedClassNames = parseClassNames(classNamesInput);
+    onSetClassConfig({
+      grade: nextGrade.trim(),
+      classNames: parsedClassNames,
+    });
+
+    if (!parsedClassNames.includes(memberClassName)) {
+      setMemberClassName(parsedClassNames[0] || "");
+    }
   };
 
   const addMember = () => {
     const trimmed = memberName.trim();
     if (!trimmed) return;
-    onAddMember({ name: trimmed, role: memberRole });
+    onAddMember({
+      name: trimmed,
+      role: memberRole,
+      className: memberClassName,
+    });
     setMemberName("");
   };
 
@@ -56,7 +84,10 @@ export default function StudentsPage({
                 </div>
                 <div className="personMeta">
                   <div className="personName">{m.name}</div>
-                  <div className="personRole">{m.role}</div>
+                  <div className="personRole">
+                    {m.role}
+                    {m.className ? ` · ${m.className}반` : ""}
+                  </div>
                   <div className="personHint">
                     {profile.note ? profile.note : "메모를 입력해 주세요"}
                   </div>
@@ -80,20 +111,39 @@ export default function StudentsPage({
   return (
     <>
       <section className="heroCard">
-        <div className="panelTitle">반/구성원 관리</div>
+        <div className="panelTitle">학년/반/구성원 관리</div>
         <div className="manageGrid">
           <label className="field">
-            <div className="fieldLabel">반 이름</div>
+            <div className="fieldLabel">학년</div>
             <input
               className="fieldInput"
-              value={nextClassName}
-              onChange={(e) => setNextClassName(e.target.value)}
-              placeholder="예: 유년부 2반"
+              value={nextGrade}
+              onChange={(e) => setNextGrade(e.target.value)}
+              placeholder="예: 3"
             />
           </label>
-          <button type="button" className="secondary manageBtn" onClick={saveClassName}>
-            반 이름 저장
+
+          <label className="field">
+            <div className="fieldLabel">반 목록(쉼표 구분)</div>
+            <input
+              className="fieldInput"
+              value={classNamesInput}
+              onChange={(e) => setClassNamesInput(e.target.value)}
+              placeholder="예: 1, 2, 3"
+            />
+          </label>
+
+          <button
+            type="button"
+            className="secondary manageBtn"
+            onClick={saveClassConfig}
+          >
+            학년/반 저장
           </button>
+
+          <div className="hintSmall">
+            반을 여러 개 등록하면 구성원 추가 시 반을 선택할 수 있습니다.
+          </div>
 
           <label className="field">
             <div className="fieldLabel">이름</div>
@@ -114,6 +164,22 @@ export default function StudentsPage({
             >
               <option value="학생">학생</option>
               <option value="선생님">선생님</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <div className="fieldLabel">반</div>
+            <select
+              className="fieldInput"
+              value={memberClassName}
+              onChange={(e) => setMemberClassName(e.target.value)}
+            >
+              <option value="">반 없음</option>
+              {classOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}반
+                </option>
+              ))}
             </select>
           </label>
 

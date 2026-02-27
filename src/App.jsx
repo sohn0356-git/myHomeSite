@@ -21,7 +21,8 @@ import {
 
 function buildInitialState() {
   return {
-    className: "",
+    grade: "",
+    classNames: [],
     members: seedMembers,
     attendanceByWeek: {},
     profiles: {},
@@ -40,8 +41,9 @@ export default function App() {
   const [syncMode, setSyncMode] = useState(
     isFirebaseEnabled() ? "firebase" : "local"
   );
+  const [lastWriteResult, setLastWriteResult] = useState(null);
 
-  const { className, members, attendanceByWeek, profiles } = state;
+  const { grade, classNames, members, attendanceByWeek, profiles } = state;
   const currentWeekKey = useMemo(() => weekKey(sunday), [sunday]);
   const attendanceMap = attendanceByWeek[currentWeekKey] || {};
 
@@ -79,9 +81,24 @@ export default function App() {
 
   const persist = (next) => {
     setState(next);
-    saveState(next).catch((err) => {
-      console.error("State sync failed:", err);
-    });
+    saveState(next)
+      .then(() => {
+        setLastWriteResult({
+          ok: true,
+          mode: isFirebaseEnabled() ? "firebase" : "local",
+          at: new Date().toISOString(),
+          error: "",
+        });
+      })
+      .catch((err) => {
+        console.error("State sync failed:", err);
+        setLastWriteResult({
+          ok: false,
+          mode: isFirebaseEnabled() ? "firebase" : "local",
+          at: new Date().toISOString(),
+          error: err?.message || "알 수 없는 오류",
+        });
+      });
   };
 
   const setAttendanceForWeek = (nextMap) => {
@@ -122,14 +139,15 @@ export default function App() {
     });
   };
 
-  const onSetClassName = (nextClassName) => {
+  const onSetClassConfig = ({ grade: nextGrade, classNames: nextClassNames }) => {
     persist({
       ...state,
-      className: nextClassName,
+      grade: nextGrade,
+      classNames: nextClassNames,
     });
   };
 
-  const onAddMember = ({ name, role }) => {
+  const onAddMember = ({ name, role, className }) => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
@@ -137,6 +155,7 @@ export default function App() {
       id: createMemberId(role),
       name: trimmedName,
       role,
+      className: className || "",
     };
 
     persist({
@@ -226,14 +245,20 @@ export default function App() {
   };
 
   const year = sunday.getFullYear();
-  const appTitle = className ? `${className} 출석부` : "출석부";
+  const classesLabel = classNames.length ? `${classNames.join(", ")}반` : "";
+  const appTitle = [grade ? `${grade}학년` : "", classesLabel, "출석부"]
+    .filter(Boolean)
+    .join(" ");
+  const writeAtText = lastWriteResult?.at
+    ? new Date(lastWriteResult.at).toLocaleString("ko-KR")
+    : "";
 
   return (
     <div className="page">
       <div className="container">
         <TopBar
           title={appTitle}
-          subtitle="출석 / 연간 / 학생 관리"
+          subtitle="출석 / 연간 / 구성원 관리"
           activeTab={activeTab}
           onChangeTab={(tab) => {
             setActiveTab(tab);
@@ -262,12 +287,13 @@ export default function App() {
           />
         )}
 
-        {activeTab === "students" && (
+        {activeTab === "members" && (
           <StudentsPage
-            className={className}
+            grade={grade}
+            classNames={classNames}
             members={members}
             profiles={profiles}
-            onSetClassName={onSetClassName}
+            onSetClassConfig={onSetClassConfig}
             onAddMember={onAddMember}
             onRemoveMember={onRemoveMember}
             onOpenDetail={(id) => setDetailMemberId(id)}
@@ -288,6 +314,16 @@ export default function App() {
 
         <div className="footerHint">
           동기화: {syncMode === "firebase" ? "Firebase Realtime DB" : "로컬 저장"}
+          {lastWriteResult ? (
+            <>
+              {" · "}
+              최근 write:{" "}
+              {lastWriteResult.ok ? "성공" : "실패"} ({writeAtText})
+              {!lastWriteResult.ok && lastWriteResult.error
+                ? ` - ${lastWriteResult.error}`
+                : ""}
+            </>
+          ) : null}
         </div>
       </div>
     </div>

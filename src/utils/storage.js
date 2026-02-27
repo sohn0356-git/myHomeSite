@@ -12,19 +12,51 @@ const ROOT_PATH = "classSite";
 let remoteWriteChain = Promise.resolve();
 
 function normalizeState(raw, fallbackMembers = []) {
+  const legacyClassName =
+    raw && typeof raw.className === "string" ? raw.className.trim() : "";
+  const nextClassNames = Array.isArray(raw?.classNames)
+    ? raw.classNames
+        .map((v) => (typeof v === "string" ? v.trim() : ""))
+        .filter(Boolean)
+    : legacyClassName
+    ? [legacyClassName]
+    : [];
+
+  const rawMembers = Array.isArray(raw?.members) ? raw.members : fallbackMembers;
+  const members = rawMembers.map((member, idx) => {
+    const safeRole = member?.role === "선생님" ? "선생님" : "학생";
+    const safeName =
+      typeof member?.name === "string" && member.name.trim()
+        ? member.name.trim()
+        : `구성원${idx + 1}`;
+    const safeClassName =
+      typeof member?.className === "string" ? member.className.trim() : "";
+
+    return {
+      ...member,
+      name: safeName,
+      role: safeRole,
+      className: safeClassName,
+    };
+  });
+
   if (!raw || typeof raw !== "object") {
     return {
-      className: "",
-      members: fallbackMembers,
+      grade: "",
+      classNames: [],
+      members: fallbackMembers.map((member) => ({
+        ...member,
+        className: typeof member?.className === "string" ? member.className : "",
+      })),
       attendanceByWeek: {},
       profiles: {},
     };
   }
 
   return {
-    className: typeof raw.className === "string" ? raw.className : "",
-    members:
-      Array.isArray(raw.members) ? raw.members : fallbackMembers,
+    grade: typeof raw.grade === "string" ? raw.grade.trim() : "",
+    classNames: nextClassNames,
+    members,
     attendanceByWeek: raw.attendanceByWeek || {},
     profiles: raw.profiles || {},
   };
@@ -52,7 +84,11 @@ export function saveState(state) {
 
   remoteWriteChain = remoteWriteChain
     .catch(() => {})
-    .then(() => set(ref(realtimeDb, ROOT_PATH), normalized));
+    .then(() =>
+      set(ref(realtimeDb, ROOT_PATH), normalized).then(() => {
+        console.info("[Firebase write] success:", ROOT_PATH, new Date().toISOString());
+      })
+    );
 
   return remoteWriteChain.catch((err) => {
     console.error("Failed to sync state to Firebase Realtime Database:", err);

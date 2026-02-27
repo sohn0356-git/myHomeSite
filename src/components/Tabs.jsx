@@ -2,7 +2,7 @@ export default function Tabs({ active, onChange }) {
   const tabs = [
     { key: "attendance", label: "출석" },
     { key: "annual", label: "연간" },
-    { key: "students", label: "학생" },
+    { key: "members", label: "구성원" },
   ];
 
   return (

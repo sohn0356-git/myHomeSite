@@ -88,6 +88,11 @@ export default function AttendancePage({
                   </div>
 
                   <div className="memberName">{m.name}</div>
+                  {m.className ? (
+                    <div className="personRole" style={{ marginTop: 0 }}>
+                      {m.className}반
+                    </div>
+                  ) : null}
                 </div>
 
                 <button
