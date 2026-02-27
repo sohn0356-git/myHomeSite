@@ -255,8 +255,11 @@ export function subscribeRemoteState(groupUid = "", grade = "1", onState, onErro
   const teachersRef = ref(realtimeDb, teachersPath);
   let latestYear = null;
   let latestTeachers = null;
+  let yearReady = false;
+  let teachersReady = false;
 
   const emit = () => {
+    if (!yearReady || !teachersReady) return;
     if (!latestYear) return;
     const next = normalizeState(latestYear, latestTeachers, [], birthYear);
     localStorage.setItem(localKey, JSON.stringify(encodeYearStateForStorage(next, birthYear)));
@@ -268,6 +271,7 @@ export function subscribeRemoteState(groupUid = "", grade = "1", onState, onErro
     yearRef,
     (snap) => {
       if (!snap.exists()) return;
+      yearReady = true;
       latestYear = snap.val();
       emit();
     },
@@ -279,6 +283,7 @@ export function subscribeRemoteState(groupUid = "", grade = "1", onState, onErro
   const unsubTeachers = onValue(
     teachersRef,
     (snap) => {
+      teachersReady = true;
       latestTeachers = snap.exists() ? snap.val() : {};
       emit();
     },
