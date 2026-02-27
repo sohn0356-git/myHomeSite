@@ -26,13 +26,7 @@ function getScope(grade) {
   };
 }
 
-export function birthDateToKey(birthDate) {
-  if (typeof birthDate !== "string") return "";
-  const cleaned = birthDate.replaceAll("-", "").trim();
-  return /^\d{8}$/.test(cleaned) ? cleaned : "";
-}
-
-function normalizeState(raw, fallbackMembers = []) {
+function normalizeState(raw, fallbackMembers = [], birthYearKey = "") {
   const rawClasses = Array.isArray(raw?.classes) ? raw.classes : [];
   const fallbackClassNames = Array.isArray(raw?.classNames) ? raw.classNames : [];
   const classesFromLegacy = fallbackClassNames
@@ -52,7 +46,27 @@ function normalizeState(raw, fallbackMembers = []) {
     .filter((item) => item.id && item.name);
 
   const classByName = new Map(classes.map((item) => [item.name, item.id]));
-  const rawPeople = Array.isArray(raw?.people)
+  const peopleTree =
+    raw?.people && !Array.isArray(raw.people) && typeof raw.people === "object"
+      ? raw.people
+      : null;
+  const studentsByYear =
+    peopleTree && peopleTree.student && typeof peopleTree.student === "object"
+      ? peopleTree.student
+      : {};
+  const studentsForScope =
+    birthYearKey &&
+    studentsByYear[birthYearKey] &&
+    typeof studentsByYear[birthYearKey] === "object"
+      ? Object.values(studentsByYear[birthYearKey])
+      : [];
+  const teachersBucket =
+    peopleTree && peopleTree.teacher && typeof peopleTree.teacher === "object"
+      ? Object.values(peopleTree.teacher)
+      : [];
+  const rawPeople = peopleTree
+    ? [...studentsForScope, ...teachersBucket]
+    : Array.isArray(raw?.people)
     ? raw.people
     : Array.isArray(raw?.members)
     ? raw.members
@@ -63,11 +77,6 @@ function normalizeState(raw, fallbackMembers = []) {
       typeof person?.name === "string" && person.name.trim()
         ? person.name.trim()
         : `구성원${idx + 1}`;
-    const birthDate =
-      typeof person?.birthDate === "string" && person.birthDate.trim()
-        ? person.birthDate.trim()
-        : "";
-    const birthKey = birthDateToKey(birthDate);
     const legacyClassName =
       typeof person?.className === "string" ? person.className.trim() : "";
     const classId =
@@ -78,14 +87,18 @@ function normalizeState(raw, fallbackMembers = []) {
       typeof person?.id === "string" && person.id.trim()
         ? person.id.trim()
         : `person_${idx + 1}`;
-    const id = safeRole === "학생" && birthKey ? birthKey : fallbackId;
+    const id = fallbackId;
+    const birthYear =
+      typeof person?.birthYear === "string" && person.birthYear.trim()
+        ? person.birthYear.trim()
+        : birthYearKey;
 
     return {
       id,
       name: safeName,
       role: safeRole,
       classId,
-      birthDate,
+      birthYear: safeRole === "학생" ? birthYear : "",
     };
   });
 
@@ -100,7 +113,7 @@ function normalizeState(raw, fallbackMembers = []) {
         name: member?.name || `구성원${idx + 1}`,
         role: member?.role === "선생님" ? "선생님" : "학생",
         classId: "",
-        birthDate: "",
+        birthYear: birthYearKey,
       })),
       attendanceByWeek: {},
       profiles: {},
@@ -115,32 +128,59 @@ function normalizeState(raw, fallbackMembers = []) {
   };
 }
 
+function encodeStateForStorage(state, birthYearKey = "") {
+  const normalized = normalizeState(state, [], birthYearKey);
+  const students = {};
+  const teachers = {};
+
+  normalized.people.forEach((person) => {
+    if (person.role === "학생") {
+      if (!birthYearKey) return;
+      if (!students[birthYearKey]) students[birthYearKey] = {};
+      students[birthYearKey][person.id] = person;
+      return;
+    }
+    teachers[person.id] = person;
+  });
+
+  return {
+    classes: normalized.classes,
+    people: {
+      student: students,
+      teacher: teachers,
+    },
+    attendanceByWeek: normalized.attendanceByWeek,
+    profiles: normalized.profiles,
+  };
+}
+
 export function isFirebaseEnabled() {
   return firebaseEnabled;
 }
 
 export function loadState(fallbackMembers = [], grade = "1") {
-  const { localKey } = getScope(grade);
+  const { localKey, birthYear } = getScope(grade);
   try {
     const raw = localStorage.getItem(localKey);
-    if (!raw) return normalizeState(null, fallbackMembers);
-    return normalizeState(JSON.parse(raw), fallbackMembers);
+    if (!raw) return normalizeState(null, fallbackMembers, birthYear);
+    return normalizeState(JSON.parse(raw), fallbackMembers, birthYear);
   } catch {
-    return normalizeState(null, fallbackMembers);
+    return normalizeState(null, fallbackMembers, birthYear);
   }
 }
 
 export function saveState(state, grade = "1") {
-  const { localKey, remotePath } = getScope(grade);
-  const normalized = normalizeState(state);
-  localStorage.setItem(localKey, JSON.stringify(normalized));
+  const { localKey, remotePath, birthYear } = getScope(grade);
+  const normalized = normalizeState(state, [], birthYear);
+  const encoded = encodeStateForStorage(normalized, birthYear);
+  localStorage.setItem(localKey, JSON.stringify(encoded));
 
   if (!firebaseEnabled) return Promise.resolve();
 
   remoteWriteChain = remoteWriteChain
     .catch(() => {})
     .then(() =>
-      set(ref(realtimeDb, remotePath), normalized).then(() => {
+      set(ref(realtimeDb, remotePath), encoded).then(() => {
         console.info("[Firebase write] success:", remotePath, new Date().toISOString());
       })
     );
@@ -154,12 +194,13 @@ export function saveState(state, grade = "1") {
 
 export async function ensureRemoteState(seedState, grade = "1") {
   if (!firebaseEnabled) return;
-  const { remotePath } = getScope(grade);
+  const { remotePath, birthYear } = getScope(grade);
   const rootRef = ref(realtimeDb, remotePath);
   const snap = await get(rootRef);
   if (!snap.exists()) {
     try {
-      await set(rootRef, normalizeState(seedState));
+      const normalized = normalizeState(seedState, [], birthYear);
+      await set(rootRef, encodeStateForStorage(normalized, birthYear));
     } catch (err) {
       err.remotePath = remotePath;
       throw err;
@@ -169,14 +210,15 @@ export async function ensureRemoteState(seedState, grade = "1") {
 
 export function subscribeRemoteState(grade = "1", onState, onError) {
   if (!firebaseEnabled) return () => {};
-  const { localKey, remotePath } = getScope(grade);
+  const { localKey, remotePath, birthYear } = getScope(grade);
   const rootRef = ref(realtimeDb, remotePath);
   return onValue(
     rootRef,
     (snap) => {
       if (!snap.exists()) return;
-      const next = normalizeState(snap.val());
-      localStorage.setItem(localKey, JSON.stringify(next));
+      const next = normalizeState(snap.val(), [], birthYear);
+      const encoded = encodeStateForStorage(next, birthYear);
+      localStorage.setItem(localKey, JSON.stringify(encoded));
       onState(next);
     },
     (err) => {

@@ -11,7 +11,6 @@ import StudentDetail from "./components/StudentDetail";
 import { seedMembers } from "./data/seedMembers";
 import { addDays, getSunday, weekKey } from "./utils/date";
 import {
-  birthDateToKey,
   deleteMemberPhotoByPath,
   ensureRemoteState,
   gradeToBirthYear,
@@ -38,6 +37,10 @@ function createPersonId(role) {
 
 function createClassId(name) {
   return `class_${name}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+}
+
+function createStudentId(birthYear) {
+  return `s_${birthYear}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
 function formatFirebaseError(err, fallbackMessage) {
@@ -217,30 +220,24 @@ export default function App() {
     });
   };
 
-  const onAddMember = ({ name, role, classId, birthDate }) => {
+  const onAddMember = ({ name, role, classId }) => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       return { ok: false, error: "이름을 입력해 주세요." };
     }
 
-    const normalizedBirthDate = (birthDate || "").trim();
-    const birthKey = birthDateToKey(normalizedBirthDate);
     let personId = createPersonId(role);
+    let personBirthYear = "";
 
     if (role === "학생") {
-      if (!birthKey) {
+      if (!birthYearKey) {
         return {
           ok: false,
-          error: "학생은 생년월일(YYYY-MM-DD) 입력이 필요합니다.",
+          error: "학년 기준 출생연도 key를 계산할 수 없습니다.",
         };
       }
-      if (people.some((person) => person.id === birthKey)) {
-        return {
-          ok: false,
-          error: "같은 생년월일 key가 이미 존재합니다. 형제/동명이인이면 형식 조정이 필요합니다.",
-        };
-      }
-      personId = birthKey;
+      personId = createStudentId(birthYearKey);
+      personBirthYear = birthYearKey;
     }
 
     const nextMember = {
@@ -248,7 +245,7 @@ export default function App() {
       name: trimmedName,
       role,
       classId: classId || "",
-      birthDate: role === "학생" ? normalizedBirthDate : "",
+      birthYear: personBirthYear,
     };
 
     persist({
@@ -256,6 +253,16 @@ export default function App() {
       people: [...people, nextMember],
     });
     return { ok: true };
+  };
+
+  const onMoveMemberToClass = (memberId, classId) => {
+    const nextPeople = people.map((person) =>
+      person.id === memberId ? { ...person, classId: classId || "" } : person
+    );
+    persist({
+      ...state,
+      people: nextPeople,
+    });
   };
 
   const onRemoveMember = async (memberId) => {
@@ -394,6 +401,7 @@ export default function App() {
             onCreateClass={onCreateClass}
             onRemoveClass={onRemoveClass}
             onAddMember={onAddMember}
+            onMoveMemberToClass={onMoveMemberToClass}
             onRemoveMember={onRemoveMember}
             onOpenDetail={(id) => setDetailMemberId(id)}
           />
@@ -417,7 +425,10 @@ export default function App() {
             ? ` · Firebase 설정 누락: ${missingFirebaseKeys.join(", ")}`
             : ""}
           {" · "}
-          저장 경로: {birthYearKey ? `classSite/byBirthYear/${birthYearKey}` : "미지정"}
+          저장 경로:{" "}
+          {birthYearKey
+            ? `classSite/byBirthYear/${birthYearKey}/people/student/${birthYearKey}`
+            : "미지정"}
           {lastWriteResult ? (
             <>
               {" · "}

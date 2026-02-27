@@ -369,6 +369,24 @@ button:active {
   height: 42px;
 }
 
+.gradePicker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gradeBtn {
+  background: #fff;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.gradeBtnActive {
+  background: rgba(79, 70, 229, 0.14);
+  color: #2b2a6b;
+  border-color: rgba(79, 70, 229, 0.3);
+}
+
 .classPills {
   display: flex;
   flex-wrap: wrap;
@@ -396,6 +414,39 @@ button:active {
   line-height: 1;
   padding: 0;
   cursor: pointer;
+}
+
+.dndBoard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.dndColumn {
+  border: 1px dashed rgba(79, 70, 229, 0.32);
+  background: rgba(79, 70, 229, 0.04);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 100px;
+}
+
+.dndTitle {
+  font-weight: 900;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.dndList {
+  display: grid;
+  gap: 6px;
+}
+
+.dndItem {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 .personCardWrap {

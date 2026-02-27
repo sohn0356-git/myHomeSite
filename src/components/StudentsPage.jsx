@@ -5,6 +5,24 @@ function Avatar({ photoUrl, fallback }) {
   return <div className="avatarFallback">{fallback}</div>;
 }
 
+function GradePicker({ grade, onChange }) {
+  const options = ["1", "2", "3"];
+  return (
+    <div className="gradePicker" role="tablist" aria-label="grade picker">
+      {options.map((value) => (
+        <button
+          key={value}
+          type="button"
+          className={`gradeBtn ${grade === value ? "gradeBtnActive" : ""}`}
+          onClick={() => onChange(value)}
+        >
+          {value}학년
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function StudentsPage({
   grade,
   birthYearKey,
@@ -15,6 +33,7 @@ export default function StudentsPage({
   onCreateClass,
   onRemoveClass,
   onAddMember,
+  onMoveMemberToClass,
   onRemoveMember,
   onOpenDetail,
 }) {
@@ -22,8 +41,8 @@ export default function StudentsPage({
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState("학생");
   const [memberClassId, setMemberClassId] = useState(classes?.[0]?.id || "");
-  const [birthDate, setBirthDate] = useState("");
   const [formError, setFormError] = useState("");
+  const [dragMemberId, setDragMemberId] = useState("");
 
   const classNameById = useMemo(
     () =>
@@ -58,7 +77,6 @@ export default function StudentsPage({
       name: memberName,
       role: memberRole,
       classId: memberClassId,
-      birthDate,
     });
     if (!result?.ok) {
       setFormError(result?.error || "구성원을 추가하지 못했습니다.");
@@ -66,7 +84,12 @@ export default function StudentsPage({
     }
     setFormError("");
     setMemberName("");
-    setBirthDate("");
+  };
+
+  const onDropToClass = (classId) => {
+    if (!dragMemberId) return;
+    onMoveMemberToClass(dragMemberId, classId);
+    setDragMemberId("");
   };
 
   const renderGroup = (title, list) => (
@@ -87,6 +110,8 @@ export default function StudentsPage({
               <button
                 type="button"
                 className="personCard"
+                draggable
+                onDragStart={() => setDragMemberId(m.id)}
                 onClick={() => onOpenDetail(m.id)}
               >
                 <div className="personAvatar">
@@ -96,11 +121,11 @@ export default function StudentsPage({
                   <div className="personName">{m.name}</div>
                   <div className="personRole">
                     {m.role}
-                    {className ? ` · ${className}` : ""}
+                    {className ? ` · ${className}` : " · 반 미지정"}
                   </div>
                   <div className="personHint">
-                    {m.role === "학생" && m.birthDate
-                      ? `생년월일 key: ${m.id}`
+                    {m.role === "학생"
+                      ? `학생 cohort key: ${birthYearKey}`
                       : profile.note || "메모를 입력해 주세요"}
                   </div>
                 </div>
@@ -123,21 +148,16 @@ export default function StudentsPage({
   return (
     <>
       <section className="heroCard">
-        <div className="panelTitle">학년 및 반 관리</div>
-        <div className="manageGrid">
-          <label className="field">
-            <div className="fieldLabel">학년</div>
-            <select
-              className="fieldInput"
-              value={grade}
-              onChange={(e) => onChangeGrade(e.target.value)}
-            >
-              <option value="1">1학년</option>
-              <option value="2">2학년</option>
-              <option value="3">3학년</option>
-            </select>
-          </label>
+        <div className="panelTitle">학년 선택</div>
+        <GradePicker grade={grade} onChange={onChangeGrade} />
+        <div className="hintSmall">
+          {grade}학년 학생은 Firebase에서 `student/{birthYearKey}` 아래에 저장됩니다.
+        </div>
+      </section>
 
+      <section className="heroCard">
+        <div className="panelTitle">반 생성</div>
+        <div className="manageGrid">
           <label className="field">
             <div className="fieldLabel">새 반 이름</div>
             <input
@@ -151,11 +171,6 @@ export default function StudentsPage({
           <button type="button" className="secondary manageBtn" onClick={addClass}>
             반 생성
           </button>
-
-          <div className="hintSmall">
-            Firebase key: {birthYearKey || "미지정"} | 경로:
-            {" classSite/byBirthYear/{key}"}
-          </div>
         </div>
 
         <div className="classPills">
@@ -165,7 +180,11 @@ export default function StudentsPage({
             classes.map((item) => (
               <span key={item.id} className="classPill">
                 {item.name}
-                <button type="button" className="classPillRemove" onClick={() => onRemoveClass(item.id)}>
+                <button
+                  type="button"
+                  className="classPillRemove"
+                  onClick={() => onRemoveClass(item.id)}
+                >
                   ×
                 </button>
               </span>
@@ -200,7 +219,7 @@ export default function StudentsPage({
           </label>
 
           <label className="field">
-            <div className="fieldLabel">반</div>
+            <div className="fieldLabel">소속 반</div>
             <select
               className="fieldInput"
               value={memberClassId}
@@ -215,27 +234,54 @@ export default function StudentsPage({
             </select>
           </label>
 
-          <label className="field">
-            <div className="fieldLabel">생년월일 (학생 필수)</div>
-            <input
-              type="date"
-              className="fieldInput"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              disabled={memberRole !== "학생"}
-            />
-          </label>
-
           <button type="button" className="secondary manageBtn" onClick={addMember}>
             구성원 생성
           </button>
-
-          <div className="hintSmall">
-            학생 ID는 생년월일 key(`YYYYMMDD`)로 저장됩니다.
-          </div>
         </div>
 
         {formError ? <div className="hintSmall">{formError}</div> : null}
+      </section>
+
+      <section className="heroCard">
+        <div className="panelTitle">반 배정 (Drag & Drop)</div>
+        <div className="dndBoard">
+          <div
+            className="dndColumn"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => onDropToClass("")}
+          >
+            <div className="dndTitle">반 미지정</div>
+            <div className="dndList">
+              {members
+                .filter((m) => !m.classId)
+                .map((m) => (
+                  <div key={m.id} className="dndItem">
+                    {m.name}
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {classes.map((item) => (
+            <div
+              key={item.id}
+              className="dndColumn"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => onDropToClass(item.id)}
+            >
+              <div className="dndTitle">{item.name}</div>
+              <div className="dndList">
+                {members
+                  .filter((m) => m.classId === item.id)
+                  .map((m) => (
+                    <div key={m.id} className="dndItem">
+                      {m.name}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       {renderGroup("선생님", teachers)}
