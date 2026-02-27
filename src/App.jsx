@@ -408,7 +408,6 @@ export default function App() {
             onRemoveClass={onRemoveClass}
             onAddMember={onAddMember}
             onMoveMemberToClass={onMoveMemberToClass}
-            onRemoveMember={onRemoveMember}
             onOpenDetail={(id) => setDetailMemberId(id)}
           />
         )}
@@ -419,6 +418,7 @@ export default function App() {
             profile={profiles[detailMember.id]}
             onChangeProfile={onChangeProfile}
             onUploadPhoto={onUploadPhoto}
+            onDeleteMember={onRemoveMember}
             firebaseEnabled={isFirebaseEnabled()}
             onClose={() => setDetailMemberId(null)}
           />

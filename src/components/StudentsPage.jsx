@@ -37,7 +37,6 @@ export default function StudentsPage({
   onRemoveClass,
   onAddMember,
   onMoveMemberToClass,
-  onRemoveMember,
   onOpenDetail,
 }) {
   const [newClassName, setNewClassName] = useState("");
@@ -87,13 +86,6 @@ export default function StudentsPage({
     const profile = profiles[member.id] || {};
     const photoUrl = profile.photoUrl || profile.photoDataUrl;
 
-    const removeMember = (event) => {
-      event.stopPropagation();
-      const ok = window.confirm(`${member.name} 구성원을 삭제할까요?`);
-      if (!ok) return;
-      onRemoveMember(member.id);
-    };
-
     return (
       <div key={member.id} className="boardCardWrap">
         <div
@@ -114,15 +106,6 @@ export default function StudentsPage({
         >
           <span className="personShape personShapeA" aria-hidden="true" />
           <span className="personShape personShapeB" aria-hidden="true" />
-          <button
-            type="button"
-            className="cardTrashBtn"
-            onClick={removeMember}
-            aria-label={`${member.name} 삭제`}
-            title="삭제"
-          >
-            🗑
-          </button>
           <div className="personAvatar">
             <Avatar member={member} photoUrl={photoUrl} />
           </div>
@@ -231,16 +214,18 @@ export default function StudentsPage({
       <section className="heroCard">
         <div className="panelTitle">반 배정 보드</div>
         <div className="dndBoard">
-          <div
-            className="dndColumn"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => onDropToClass("")}
-          >
-            <div className="dndTitle">반 미지정</div>
-            <div className="dndList">
-              {members.filter((m) => !m.classId).map(renderMemberCard)}
+          {members.some((m) => !m.classId) ? (
+            <div
+              className="dndColumn"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => onDropToClass("")}
+            >
+              <div className="dndTitle">반 미지정</div>
+              <div className="dndList">
+                {members.filter((m) => !m.classId).map(renderMemberCard)}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {classes.map((item) => (
             <div

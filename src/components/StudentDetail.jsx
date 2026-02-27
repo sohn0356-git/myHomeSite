@@ -7,6 +7,7 @@ export default function StudentDetail({
   profile,
   onChangeProfile,
   onUploadPhoto,
+  onDeleteMember,
   firebaseEnabled,
   onClose,
 }) {
@@ -21,6 +22,13 @@ export default function StudentDetail({
 
   const update = (patch) => {
     onChangeProfile(member.id, { ...safeProfile, ...patch });
+  };
+
+  const handleDelete = async () => {
+    const ok = window.confirm(`${member.name} 구성원을 삭제할까요?`);
+    if (!ok) return;
+    await onDeleteMember(member.id);
+    onClose();
   };
 
   const handleUpload = async (event) => {
@@ -54,9 +62,14 @@ export default function StudentDetail({
             <div className="modalTitle">{member.role} · {member.name}</div>
             <div className="modalSub">프로필 / 인적사항</div>
           </div>
-          <button type="button" className="secondary" onClick={onClose}>
-            닫기
-          </button>
+          <div className="modalTopActions">
+            <button type="button" className="dangerBtn" onClick={handleDelete}>
+              삭제
+            </button>
+            <button type="button" className="secondary" onClick={onClose}>
+              닫기
+            </button>
+          </div>
         </div>
 
         <div className="profileRow">
