@@ -25,7 +25,6 @@ function GradePicker({ grade, onChange }) {
 
 export default function StudentsPage({
   grade,
-  birthYearKey,
   classes,
   members,
   profiles,
@@ -109,11 +108,15 @@ export default function StudentsPage({
             <div key={m.id} className="personCardWrap">
               <button
                 type="button"
-                className="personCard"
+                className={`personCard ${
+                  m.role === "선생님" ? "personTeacher" : "personStudent"
+                }`}
                 draggable
                 onDragStart={() => setDragMemberId(m.id)}
                 onClick={() => onOpenDetail(m.id)}
               >
+                <span className="personShape personShapeA" aria-hidden="true" />
+                <span className="personShape personShapeB" aria-hidden="true" />
                 <div className="personAvatar">
                   <Avatar photoUrl={photoUrl} fallback={m.name.slice(0, 1)} />
                 </div>
@@ -124,9 +127,7 @@ export default function StudentsPage({
                     {className ? ` · ${className}` : " · 반 미지정"}
                   </div>
                   <div className="personHint">
-                    {m.role === "학생"
-                      ? `학생 cohort key: ${birthYearKey}`
-                      : profile.note || "메모를 입력해 주세요"}
+                    {profile.note || "메모를 입력해 주세요"}
                   </div>
                 </div>
               </button>
@@ -150,9 +151,6 @@ export default function StudentsPage({
       <section className="heroCard">
         <div className="panelTitle">학년 선택</div>
         <GradePicker grade={grade} onChange={onChangeGrade} />
-        <div className="hintSmall">
-          {grade}학년 학생은 Firebase에서 `student/{birthYearKey}` 아래에 저장됩니다.
-        </div>
       </section>
 
       <section className="heroCard">

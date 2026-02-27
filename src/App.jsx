@@ -349,7 +349,7 @@ export default function App() {
         <TopBar
           title={appTitle}
           subtitle="출석 / 연간 / 구성원 관리"
-          groupLabel={session.groupName}
+          groupLabel={session.displayName || session.groupName}
           onLogout={onLogout}
           activeTab={activeTab}
           onChangeTab={(tab) => {

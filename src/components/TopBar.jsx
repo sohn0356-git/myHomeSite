@@ -13,7 +13,7 @@ export default function TopBar({
       <div className="topBarLeft">
         <div className="topTitle">{title}</div>
         <div className="topSub">{subtitle}</div>
-        {groupLabel ? <div className="topSub">그룹: {groupLabel}</div> : null}
+        {groupLabel ? <div className="topSub">{groupLabel}</div> : null}
       </div>
 
       <div className="topBarRight">

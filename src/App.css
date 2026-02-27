@@ -472,10 +472,12 @@ button:active {
   align-items: center;
   width: 100%;
   text-align: left;
-  background: var(--card);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(145deg, #ffffff 0%, #f5fbff 100%);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 22px;
   padding: 12px;
 }
 
@@ -483,17 +485,50 @@ button:active {
   border-color: rgba(15, 111, 184, 0.3);
 }
 
+.personTeacher {
+  background: linear-gradient(145deg, #ffffff 0%, #eef7ff 100%);
+}
+
+.personStudent {
+  background: linear-gradient(145deg, #ffffff 0%, #effff8 100%);
+}
+
+.personShape {
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.personShapeA {
+  width: 120px;
+  height: 120px;
+  top: -50px;
+  right: -35px;
+  background: radial-gradient(circle, rgba(15, 111, 184, 0.22), rgba(15, 111, 184, 0));
+}
+
+.personShapeB {
+  width: 90px;
+  height: 90px;
+  bottom: -45px;
+  left: -30px;
+  background: radial-gradient(circle, rgba(27, 189, 155, 0.2), rgba(27, 189, 155, 0));
+}
+
 .personAvatar {
   width: 84px;
   height: 84px;
-  border-radius: 18px;
+  border-radius: 22px 8px 22px 8px;
   overflow: hidden;
   border: 1px solid rgba(15, 111, 184, 0.2);
   background: rgba(15, 111, 184, 0.08);
+  z-index: 1;
 }
 
 .personMeta {
   min-width: 0;
+  z-index: 1;
 }
 
 .personName {
