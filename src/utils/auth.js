@@ -9,16 +9,43 @@ async function pathExists(path) {
   return snap.exists();
 }
 
-function makeUidCandidate() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return `grp_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
+function fnv1aHash(input) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
-  return `grp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-async function generateUniqueGroupUid() {
+async function sha256Hex(input) {
+  if (
+    typeof crypto !== "undefined" &&
+    crypto.subtle &&
+    typeof TextEncoder !== "undefined"
+  ) {
+    const bytes = new TextEncoder().encode(input);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  const fallback = fnv1aHash(input.repeat(4));
+  return `${fallback}${fallback}${fallback}${fallback}`;
+}
+
+async function makeHashedUidCandidate(groupName) {
+  const salt = `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+  const base = `${groupName}:${salt}`;
+  const hex = await sha256Hex(base);
+  return `grp_${hex.slice(0, 20)}`;
+}
+
+async function generateUniqueGroupUid(groupName) {
   for (let i = 0; i < 20; i += 1) {
-    const uid = makeUidCandidate();
+    const uid = await makeHashedUidCandidate(groupName);
     const used = await pathExists(`classSite/groups/${uid}`);
     if (!used) return uid;
   }
@@ -38,7 +65,7 @@ async function ensureGroupUid(credentialPath, account, groupName) {
     account?.groupUid || account?.group_id || account?.groupId || account?.group;
   if (typeof existing === "string" && existing.trim()) return existing.trim();
 
-  const created = await generateUniqueGroupUid();
+  const created = await generateUniqueGroupUid(groupName);
   await set(ref(realtimeDb, `${credentialPath}/groupUid`), created);
   return created;
 }
