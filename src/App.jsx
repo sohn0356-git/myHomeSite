@@ -58,6 +58,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("attendance");
   const [sunday, setSunday] = useState(getSunday());
   const [selectedGrade, setSelectedGrade] = useState("1");
+  const [attendanceView, setAttendanceView] = useState("1");
   const [state, setState] = useState(buildInitialState);
   const [syncMode, setSyncMode] = useState(
     isFirebaseEnabled() ? "firebase" : "local"
@@ -322,7 +323,7 @@ export default function App() {
     const nextProfile = {
       ...(profiles[memberId] || {}),
       photoPath: result.path,
-      photoUrl: result.url,
+      photoUrl: `${result.url}${result.url.includes("?") ? "&" : "?"}v=${Date.now()}`,
     };
 
     onChangeProfile(memberId, nextProfile);
@@ -332,6 +333,14 @@ export default function App() {
   const onChangeGrade = (nextGrade) => {
     setDetailMemberId(null);
     setSelectedGrade(nextGrade);
+    setAttendanceView(nextGrade);
+  };
+
+  const onChangeAttendanceView = (nextView) => {
+    setDetailMemberId(null);
+    setAttendanceView(nextView);
+    if (nextView === "teacher") return;
+    setSelectedGrade(nextView);
   };
 
   const onLogin = async (groupName, password) => {
@@ -341,6 +350,7 @@ export default function App() {
     setActiveTab("attendance");
     setSunday(getSunday());
     setSelectedGrade("1");
+    setAttendanceView("1");
     return result;
   };
 
@@ -373,8 +383,8 @@ export default function App() {
 
         {activeTab === "attendance" && (
           <AttendancePage
-            grade={selectedGrade}
-            onChangeGrade={onChangeGrade}
+            grade={attendanceView}
+            onChangeGrade={onChangeAttendanceView}
             sunday={sunday}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}

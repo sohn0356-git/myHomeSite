@@ -10,16 +10,17 @@ function Avatar({ memberId, fallback, photoUrl }) {
 }
 
 function GradePicker({ grade, onChange }) {
+  const options = ["1", "2", "3", "teacher"];
   return (
     <div className="gradePicker" role="tablist" aria-label="grade picker">
-      {["1", "2", "3"].map((value) => (
+      {options.map((value) => (
         <button
           key={value}
           type="button"
           className={`gradeBtn ${grade === value ? "gradeBtnActive" : ""}`}
           onClick={() => onChange(value)}
         >
-          {value}학년
+          {value === "teacher" ? "선생님" : `${value}학년`}
         </button>
       ))}
     </div>
@@ -38,17 +39,21 @@ export default function AttendancePage({
   onToggle,
   onMarkAll,
 }) {
+  const roleFilteredMembers =
+    grade === "teacher"
+      ? members.filter((m) => m.role === "선생님")
+      : members.filter((m) => m.role !== "선생님");
   const [classFilter, setClassFilter] = useState("all");
   const classOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          members
+          roleFilteredMembers
             .map((m) => (typeof m.className === "string" ? m.className.trim() : ""))
             .filter(Boolean)
         )
       ),
-    [members]
+    [roleFilteredMembers]
   );
   useEffect(() => {
     if (classFilter === "all") return;
@@ -57,8 +62,8 @@ export default function AttendancePage({
   }, [classFilter, classOptions]);
   const visibleMembers =
     classFilter === "all"
-      ? members
-      : members.filter((m) => (m.className || "").trim() === classFilter);
+      ? roleFilteredMembers
+      : roleFilteredMembers.filter((m) => (m.className || "").trim() === classFilter);
   const present = visibleMembers.filter((m) => attendanceMap[m.id]).length;
   const absent = visibleMembers.length - present;
 
@@ -82,26 +87,32 @@ export default function AttendancePage({
         </div>
 
         <div className="miniSummary">
-          <span>반 필터: {classFilter === "all" ? "전체" : `${classFilter}반`}</span>
+          <span>
+            {grade === "teacher"
+              ? "대상: 선생님"
+              : `반 필터: ${classFilter === "all" ? "전체" : `${classFilter}반`}`}
+          </span>
           <span>출석 {present}명</span>
           <span>결석 {absent}명</span>
         </div>
 
-        <label className="field">
-          <div className="fieldLabel">반별 보기</div>
-          <select
-            className="fieldInput"
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-          >
-            <option value="all">전체</option>
-            {classOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}반
-              </option>
-            ))}
-          </select>
-        </label>
+        {grade !== "teacher" ? (
+          <label className="field">
+            <div className="fieldLabel">반별 보기</div>
+            <select
+              className="fieldInput"
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+            >
+              <option value="all">전체</option>
+              {classOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}반
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <div className="actions">
           <button
