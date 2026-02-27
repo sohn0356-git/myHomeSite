@@ -23,6 +23,7 @@ import {
   gradeToBirthYear,
   isFirebaseEnabled,
   loadState,
+  loadRemoteState,
   saveState,
   subscribeRemoteState,
   uploadMemberPhoto,
@@ -114,9 +115,8 @@ export default function App() {
       return () => {};
     }
 
-    setState(loadState(seedMembers, groupUid, selectedGrade));
-
     if (!isFirebaseEnabled()) {
+      setState(loadState(seedMembers, groupUid, selectedGrade));
       setSyncMode("local");
       return () => {};
     }
@@ -128,6 +128,13 @@ export default function App() {
       try {
         await ensureRemoteState(buildInitialState(), groupUid, selectedGrade);
         if (detached) return;
+        const remoteState = await loadRemoteState(
+          seedMembers,
+          groupUid,
+          selectedGrade
+        );
+        if (detached) return;
+        setState(remoteState);
 
         unsubscribe = subscribeRemoteState(
           groupUid,

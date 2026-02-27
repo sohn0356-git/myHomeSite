@@ -298,6 +298,31 @@ export function subscribeRemoteState(groupUid = "", grade = "1", onState, onErro
   };
 }
 
+export async function loadRemoteState(
+  fallbackMembers = [],
+  groupUid = "",
+  grade = "1"
+) {
+  const { localKey, teachersLocalKey, remotePath, teachersPath, birthYear } = getScope(
+    groupUid,
+    grade
+  );
+  if (!firebaseEnabled) {
+    return normalizeState(null, null, fallbackMembers, birthYear);
+  }
+
+  const yearRef = ref(realtimeDb, remotePath);
+  const teachersRef = ref(realtimeDb, teachersPath);
+  const [yearSnap, teachersSnap] = await Promise.all([get(yearRef), get(teachersRef)]);
+  const rawYear = yearSnap.exists() ? yearSnap.val() : null;
+  const rawTeachers = teachersSnap.exists() ? teachersSnap.val() : {};
+  const next = normalizeState(rawYear, rawTeachers, fallbackMembers, birthYear);
+
+  localStorage.setItem(localKey, JSON.stringify(encodeYearStateForStorage(next, birthYear)));
+  localStorage.setItem(teachersLocalKey, JSON.stringify(encodeTeachersForStorage(next)));
+  return next;
+}
+
 export async function uploadMemberPhoto(memberId, file, groupUid = "") {
   if (!firebaseEnabled) {
     throw new Error("Firebase is not configured.");
